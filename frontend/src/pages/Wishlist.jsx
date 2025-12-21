@@ -15,7 +15,7 @@ export default function Wishlist() {
 
     const fetchWishlist = async () => {
         try {
-            const res = await fetch('http://localhost:5000/api/wishlist', {
+            const res = await fetch('https://findone-puce.vercel.app/api/wishlist', {
                 headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
             });
             const data = await res.json();
@@ -29,7 +29,7 @@ export default function Wishlist() {
 
     const removeFromWishlist = async (id) => {
         try {
-            await fetch(`http://localhost:5000/api/wishlist/${id}`, {
+            await fetch(`https://findone-puce.vercel.app/api/wishlist/${id}`, {
                 method: 'DELETE',
                 headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
             });

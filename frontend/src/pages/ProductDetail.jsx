@@ -140,7 +140,7 @@ export default function ProductDetail() {
                                             if (!user) { alert('Please login first'); navigate('/login'); return; }
                                             setWishing(true);
                                             try {
-                                                const res = await fetch('http://localhost:5000/api/wishlist/add', {
+                                                const res = await fetch('https://findone-puce.vercel.app/api/wishlist/add', {
                                                     method: 'POST',
                                                     headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${localStorage.getItem('token')}` },
                                                     body: JSON.stringify({ product_id: product.id, desired_max_price: targetPrice || product.price })
@@ -227,7 +227,7 @@ export default function ProductDetail() {
                                 onClick={async () => {
                                     setAnalyzing(true);
                                     try {
-                                        const res = await fetch('http://localhost:5000/api/analyze/reviews', {
+                                        const res = await fetch('https://findone-puce.vercel.app/api/analyze/reviews', {
                                             method: 'POST',
                                             headers: { 'Content-Type': 'application/json' },
                                             body: JSON.stringify({ product_id: product.id, product_url: product.product_url })

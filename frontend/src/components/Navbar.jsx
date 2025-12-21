@@ -13,7 +13,7 @@ export default function Navbar() {
         if (user) {
             const fetchNotifs = async () => {
                 try {
-                    const res = await fetch('http://localhost:5000/api/notifications', {
+                    const res = await fetch('https://findone-puce.vercel.app/api/notifications', {
                         headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
                     });
                     if (res.ok) setNotifications(await res.json());
@@ -26,7 +26,7 @@ export default function Navbar() {
     }, [user]);
 
     const markRead = async (id) => {
-        await fetch(`http://localhost:5000/api/notifications/read/${id}`, {
+        await fetch(`https://findone-puce.vercel.app/api/notifications/read/${id}`, {
             method: 'POST',
             headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
         });
