@@ -1,15 +1,27 @@
 const puppeteer = require('puppeteer');
 const { getMockProducts } = require('./mockData');
+const chromium = require('@sparticuz/chromium');
+const puppeteerCore = require('puppeteer-core');
 
 async function scrapeProducts(query = 't-shirt') {
    console.log(`--- SCRAPER UPDATED V2 Loaded ---`);
    console.log(`Starting real scrape for: ${query}`);
 
    try {
-      const browser = await puppeteer.launch({
-         headless: "new",
-         args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage', '--disable-blink-features=AutomationControlled']
-      });
+      let browser;
+      if (process.env.VERCEL) {
+         browser = await puppeteerCore.launch({
+            args: chromium.args,
+            defaultViewport: chromium.defaultViewport,
+            executablePath: await chromium.executablePath(),
+            headless: chromium.headless,
+         });
+      } else {
+         browser = await puppeteer.launch({
+            headless: "new",
+            args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage', '--disable-blink-features=AutomationControlled']
+         });
+      }
 
       // Scrape all sites concurrently
       const results = await Promise.all([

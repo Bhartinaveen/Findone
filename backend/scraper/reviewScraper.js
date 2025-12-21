@@ -1,5 +1,8 @@
 const puppeteer = require('puppeteer-extra');
 const StealthPlugin = require('puppeteer-extra-plugin-stealth');
+const chromium = require('@sparticuz/chromium');
+const puppeteerCore = require('puppeteer-core');
+
 puppeteer.use(StealthPlugin());
 
 // Pool of User Agents to rotate
@@ -13,18 +16,27 @@ const USER_AGENTS = [
 async function scrapeReviews(productUrl) {
     let browser = null;
     try {
-        browser = await puppeteer.launch({
-            headless: "new",
-            args: [
-                '--no-sandbox',
-                '--disable-setuid-sandbox',
-                '--disable-blink-features=AutomationControlled',
-                '--window-size=1920,1080',
-                '--disable-infobars',
-                '--excludeSwitches=enable-automation',
-                '--use-gl=egl'
-            ]
-        });
+        if (process.env.VERCEL) {
+            browser = await puppeteerCore.launch({
+                args: chromium.args,
+                defaultViewport: chromium.defaultViewport,
+                executablePath: await chromium.executablePath(),
+                headless: chromium.headless,
+            });
+        } else {
+            browser = await puppeteer.launch({
+                headless: "new",
+                args: [
+                    '--no-sandbox',
+                    '--disable-setuid-sandbox',
+                    '--disable-blink-features=AutomationControlled',
+                    '--window-size=1920,1080',
+                    '--disable-infobars',
+                    '--excludeSwitches=enable-automation',
+                    '--use-gl=egl'
+                ]
+            });
+        }
 
         const page = await browser.newPage();
 
