@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { getProductDetails } from '../api';
+import { getProductDetails, getApiUrl } from '../api';
 import PriceChart from '../components/PriceChart';
 import { ArrowLeft, Heart } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
@@ -140,7 +140,7 @@ export default function ProductDetail() {
                                             if (!user) { alert('Please login first'); navigate('/login'); return; }
                                             setWishing(true);
                                             try {
-                                                const res = await fetch('https://findone-puce.vercel.app/api/wishlist/add', {
+                                                const res = await fetch(`${getApiUrl()}/wishlist/add`, {
                                                     method: 'POST',
                                                     headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${localStorage.getItem('token')}` },
                                                     body: JSON.stringify({ product_id: product.id, desired_max_price: targetPrice || product.price })
@@ -227,7 +227,7 @@ export default function ProductDetail() {
                                 onClick={async () => {
                                     setAnalyzing(true);
                                     try {
-                                        const res = await fetch('https://findone-puce.vercel.app/api/analyze/reviews', {
+                                        const res = await fetch(`${getApiUrl()}/analyze/reviews`, {
                                             method: 'POST',
                                             headers: { 'Content-Type': 'application/json' },
                                             body: JSON.stringify({ product_id: product.id, product_url: product.product_url })

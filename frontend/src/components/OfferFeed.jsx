@@ -1,5 +1,6 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
+import { getApiUrl } from '../api';
 
 export default function OfferFeed() {
     const [offers, setOffers] = useState([]);
@@ -10,7 +11,7 @@ export default function OfferFeed() {
         const fetchOffers = async () => {
             try {
                 // In a real app, use environment variable for URL
-                const res = await fetch('https://findone-puce.vercel.app/api/offers');
+                const res = await fetch(`${getApiUrl()}/offers`);
                 const data = await res.json();
                 if (data.success) {
                     setOffers(data.data);

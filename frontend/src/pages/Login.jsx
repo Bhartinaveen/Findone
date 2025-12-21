@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { getApiUrl } from '../api';
 
 export default function Login() {
     const [email, setEmail] = useState('');
@@ -16,7 +17,7 @@ export default function Login() {
         setError('');
 
         try {
-            const res = await fetch('https://findone-puce.vercel.app/api/auth/login', {
+            const res = await fetch(`${getApiUrl()}/auth/login`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ email, password }),

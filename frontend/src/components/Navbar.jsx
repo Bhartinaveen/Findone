@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { getApiUrl } from '../api';
 import { LogOut, User, Bell, Heart } from 'lucide-react';
 
 export default function Navbar() {
@@ -13,7 +14,7 @@ export default function Navbar() {
         if (user) {
             const fetchNotifs = async () => {
                 try {
-                    const res = await fetch('https://findone-puce.vercel.app/api/notifications', {
+                    const res = await fetch(`${getApiUrl()}/notifications`, {
                         headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
                     });
                     if (res.ok) setNotifications(await res.json());
@@ -26,7 +27,7 @@ export default function Navbar() {
     }, [user]);
 
     const markRead = async (id) => {
-        await fetch(`https://findone-puce.vercel.app/api/notifications/read/${id}`, {
+        await fetch(`${getApiUrl()}/notifications/read/${id}`, {
             method: 'POST',
             headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
         });

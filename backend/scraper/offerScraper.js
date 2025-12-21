@@ -1,8 +1,5 @@
 const puppeteer = require('puppeteer-extra');
 const StealthPlugin = require('puppeteer-extra-plugin-stealth');
-const chromium = require('@sparticuz/chromium');
-const puppeteerCore = require('puppeteer-core');
-
 puppeteer.use(StealthPlugin());
 
 async function scrapeOffers() {
@@ -10,25 +7,16 @@ async function scrapeOffers() {
     let offers = [];
 
     try {
-        if (process.env.VERCEL) {
-            browser = await puppeteerCore.launch({
-                args: chromium.args,
-                defaultViewport: chromium.defaultViewport,
-                executablePath: await chromium.executablePath(),
-                headless: chromium.headless,
-            });
-        } else {
-            browser = await puppeteer.launch({
-                headless: "new",
-                args: [
-                    '--no-sandbox',
-                    '--disable-setuid-sandbox',
-                    '--disable-blink-features=AutomationControlled',
-                    '--window-size=1366,768',
-                    '--disable-infobars',
-                ]
-            });
-        }
+        browser = await puppeteer.launch({
+            headless: "new",
+            args: [
+                '--no-sandbox',
+                '--disable-setuid-sandbox',
+                '--disable-blink-features=AutomationControlled',
+                '--window-size=1366,768',
+                '--disable-infobars',
+            ]
+        });
 
         const sites = [
             {

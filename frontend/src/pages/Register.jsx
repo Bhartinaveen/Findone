@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { getApiUrl } from '../api';
 
 export default function Register() {
     const [fullName, setFullName] = useState('');
@@ -17,7 +18,7 @@ export default function Register() {
         setError('');
 
         try {
-            const res = await fetch('https://findone-puce.vercel.app/api/auth/register', {
+            const res = await fetch(`${getApiUrl()}/auth/register`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ fullName, email, password }),

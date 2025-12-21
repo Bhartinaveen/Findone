@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useAuth } from '../context/AuthContext';
+import { getApiUrl } from '../api';
 import { ArrowLeft, Trash2 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
@@ -15,7 +16,7 @@ export default function Wishlist() {
 
     const fetchWishlist = async () => {
         try {
-            const res = await fetch('https://findone-puce.vercel.app/api/wishlist', {
+            const res = await fetch(`${getApiUrl()}/wishlist`, {
                 headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
             });
             const data = await res.json();
@@ -29,7 +30,7 @@ export default function Wishlist() {
 
     const removeFromWishlist = async (id) => {
         try {
-            await fetch(`https://findone-puce.vercel.app/api/wishlist/${id}`, {
+            await fetch(`${getApiUrl()}/wishlist/${id}`, {
                 method: 'DELETE',
                 headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
             });
