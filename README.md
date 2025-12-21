@@ -141,12 +141,19 @@ Follow these steps to set up the project locally.
 ![Wishlist](screencapture-localhost-5173-wishlist-2025-12-21-01_08_46.png)
 
 <div style="display: flex; gap: 10px;">
-  <img src="image.png" alt="Chatbot 1" width="30%">
+  
   <img src="image-2.png" alt="Chatbot 3" width="30%">
+</div>
+
+
+### Notification when price drops and when offer starts 
+<div style="display: flex; gap: 10px;">
+  <img src="image.png" alt="Chatbot 1" width="30%">
+  
 </div>
  
 
-### Chatbot Interface
+### Chatbot Interface you can chat with AI and shop with AI 
 <div style="display: flex; gap: 10px;">
  
   <img src="image-1.png" alt="Chatbot 2" width="30%">
