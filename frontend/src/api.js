@@ -1,7 +1,7 @@
 import axios from 'axios';
 
 const api = axios.create({
-    baseURL: 'https://findone-puce.vercel.app/api',
+    baseURL: '/api',
 });
 
 export const getProducts = async () => {
