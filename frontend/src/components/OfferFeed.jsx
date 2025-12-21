@@ -10,7 +10,7 @@ export default function OfferFeed() {
         const fetchOffers = async () => {
             try {
                 // In a real app, use environment variable for URL
-                const res = await fetch('http://localhost:5000/api/offers');
+                const res = await fetch('https://findone-puce.vercel.app/api/offers');
                 const data = await res.json();
                 if (data.success) {
                     setOffers(data.data);
