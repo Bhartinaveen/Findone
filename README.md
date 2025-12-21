@@ -140,11 +140,17 @@ Follow these steps to set up the project locally.
 ### Wishlist
 ![Wishlist](screencapture-localhost-5173-wishlist-2025-12-21-01_08_46.png)
 
-### Chatbot Interface
 <div style="display: flex; gap: 10px;">
   <img src="image.png" alt="Chatbot 1" width="30%">
-  <img src="image-1.png" alt="Chatbot 2" width="30%">
   <img src="image-2.png" alt="Chatbot 3" width="30%">
+</div>
+ 
+
+### Chatbot Interface
+<div style="display: flex; gap: 10px;">
+ 
+  <img src="image-1.png" alt="Chatbot 2" width="30%">
+  
 </div>
 
 ---
