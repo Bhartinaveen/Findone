@@ -290,6 +290,7 @@ Open **http://localhost:5173** in your browser.
 ---
 
 <p align="center">Made with ❤️ by <a href="https://github.com/Bhartinaveen">Bharti Naveen</a></p>
+<p align="center">New Collaboration ❤️ by <a href="https://github.com/abhisura7890">Abhishek Sharma</a></p>
 
 # How this project looks
 # login page
