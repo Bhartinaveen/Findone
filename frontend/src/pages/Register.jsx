@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { getApiUrl } from '../api';
+import { User, Mail, Lock, Rocket } from 'lucide-react';
 
 export default function Register() {
     const [fullName, setFullName] = useState('');
@@ -32,59 +33,82 @@ export default function Register() {
                 setError(data.error || 'Registration failed');
             }
         } catch (err) {
-            setError('Server error');
+            setError('Server error. Please try again.');
         } finally {
             setLoading(false);
         }
     };
 
     return (
-        <div style={styles.container}>
-            <div style={styles.card}>
-                <h2 style={{ textAlign: 'center', marginBottom: '1.5rem' }}>Join the Future</h2>
-                {error && <div style={styles.error}>{error}</div>}
+        <div className="auth-page">
+            <div className="auth-card fade-up">
+                <div style={{ textAlign: 'center', marginBottom: '0.5rem' }}>
+                    <div style={{
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        width: 52,
+                        height: 52,
+                        borderRadius: '1rem',
+                        background: 'linear-gradient(135deg, rgba(16,185,129,0.15) 0%, rgba(99,102,241,0.15) 100%)',
+                        border: '1px solid rgba(16,185,129,0.25)',
+                        marginBottom: '1.25rem'
+                    }}>
+                        <Rocket size={22} color="#34d399" />
+                    </div>
+                </div>
+
+                <h2 className="auth-title">Join FindNow</h2>
+                <p className="auth-subtitle">Create your free account today</p>
+
+                {error && <div className="auth-error">{error}</div>}
+
                 <form onSubmit={handleSubmit}>
-                    <input
-                        type="text"
-                        placeholder="Full Name"
-                        value={fullName}
-                        onChange={(e) => setFullName(e.target.value)}
-                        style={styles.input}
-                        required
-                    />
-                    <input
-                        type="email"
-                        placeholder="Email"
-                        value={email}
-                        onChange={(e) => setEmail(e.target.value)}
-                        style={styles.input}
-                        required
-                    />
-                    <input
-                        type="password"
-                        placeholder="Password"
-                        value={password}
-                        onChange={(e) => setPassword(e.target.value)}
-                        style={styles.input}
-                        required
-                    />
-                    <button type="submit" disabled={loading} style={styles.button}>
-                        {loading ? 'Creating...' : 'Register'}
+                    <div style={{ position: 'relative', marginBottom: '1rem' }}>
+                        <User size={16} style={{ position: 'absolute', left: '1rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)', pointerEvents: 'none' }} />
+                        <input
+                            type="text"
+                            placeholder="Full Name"
+                            value={fullName}
+                            onChange={(e) => setFullName(e.target.value)}
+                            className="auth-input"
+                            style={{ paddingLeft: '2.75rem', marginBottom: 0 }}
+                            required
+                        />
+                    </div>
+                    <div style={{ position: 'relative', marginBottom: '1rem' }}>
+                        <Mail size={16} style={{ position: 'absolute', left: '1rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)', pointerEvents: 'none' }} />
+                        <input
+                            type="email"
+                            placeholder="Email address"
+                            value={email}
+                            onChange={(e) => setEmail(e.target.value)}
+                            className="auth-input"
+                            style={{ paddingLeft: '2.75rem', marginBottom: 0 }}
+                            required
+                        />
+                    </div>
+                    <div style={{ position: 'relative', marginBottom: '1rem' }}>
+                        <Lock size={16} style={{ position: 'absolute', left: '1rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)', pointerEvents: 'none' }} />
+                        <input
+                            type="password"
+                            placeholder="Password"
+                            value={password}
+                            onChange={(e) => setPassword(e.target.value)}
+                            className="auth-input"
+                            style={{ paddingLeft: '2.75rem', marginBottom: 0 }}
+                            required
+                        />
+                    </div>
+                    <button type="submit" disabled={loading} className="auth-btn">
+                        {loading ? 'Creating account...' : 'Create Account'}
                     </button>
                 </form>
-                <div style={{ marginTop: '1rem', textAlign: 'center' }}>
-                    <span style={{ color: '#94a3b8' }}>Already have an account? </span>
-                    <Link to="/login" style={{ color: '#60a5fa' }}>Login</Link>
-                </div>
+
+                <p className="auth-footer-text">
+                    Already have an account? <Link to="/login">Sign in →</Link>
+                </p>
             </div>
         </div>
     );
 }
-
-const styles = {
-    container: { display: 'flex', justifyContent: 'center', alignItems: 'center', height: '80vh' },
-    card: { background: '#1e293b', padding: '2rem', borderRadius: '1rem', width: '350px', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.5)' },
-    input: { width: '100%', padding: '0.8rem', marginBottom: '1rem', borderRadius: '0.5rem', background: '#334155', border: '1px solid #475569', color: 'white' },
-    button: { width: '100%', padding: '0.8rem', borderRadius: '0.5rem', background: '#10b981', color: 'white', border: 'none', cursor: 'pointer', fontWeight: 'bold' },
-    error: { background: 'rgba(239, 68, 68, 0.2)', color: '#fca5a5', padding: '0.5rem', borderRadius: '0.5rem', marginBottom: '1rem', textAlign: 'center' }
-};

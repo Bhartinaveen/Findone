@@ -1,7 +1,21 @@
 const express = require('express');
 const router = express.Router();
-const { scrapeReviews } = require('../scraper/reviewScraper');
+const { scrapeReviews, scrapeRatingDistribution } = require('../scraper/reviewScraper');
 const { analyzeReviews } = require('../services/sentimentService');
+
+router.post('/ratings', async (req, res) => {
+    try {
+        const { product_url, rating } = req.body;
+        if (!product_url) return res.status(400).json({ error: 'Product URL is required' });
+        
+        console.log(`Rating fetch for: ${product_url}`);
+        const ratings = await scrapeRatingDistribution(product_url, rating);
+        res.json(ratings);
+    } catch (error) {
+        console.error("Rating Route Error:", error);
+        res.status(500).json({ error: 'Internal Server Error' });
+    }
+});
 
 router.post('/reviews', async (req, res) => {
     try {

@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { getApiUrl } from '../api';
+import { Mail, Lock, Sparkles } from 'lucide-react';
 
 export default function Login() {
     const [email, setEmail] = useState('');
@@ -31,51 +32,70 @@ export default function Login() {
                 setError(data.error || 'Login failed');
             }
         } catch (err) {
-            setError('Server error');
+            setError('Server error. Please try again.');
         } finally {
             setLoading(false);
         }
     };
 
     return (
-        <div style={styles.container}>
-            <div style={styles.card}>
-                <h2 style={{ textAlign: 'center', marginBottom: '1.5rem' }}>Pro Login</h2>
-                {error && <div style={styles.error}>{error}</div>}
+        <div className="auth-page">
+            <div className="auth-card fade-up">
+                <div style={{ textAlign: 'center', marginBottom: '0.5rem' }}>
+                    <div style={{
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        width: 52,
+                        height: 52,
+                        borderRadius: '1rem',
+                        background: 'linear-gradient(135deg, rgba(99,102,241,0.2) 0%, rgba(139,92,246,0.2) 100%)',
+                        border: '1px solid rgba(99,102,241,0.3)',
+                        marginBottom: '1.25rem'
+                    }}>
+                        <Sparkles size={22} color="#818cf8" />
+                    </div>
+                </div>
+
+                <h2 className="auth-title">Welcome Back</h2>
+                <p className="auth-subtitle">Sign in to your FindNow account</p>
+
+                {error && <div className="auth-error">{error}</div>}
+
                 <form onSubmit={handleSubmit}>
-                    <input
-                        type="email"
-                        placeholder="Email"
-                        value={email}
-                        onChange={(e) => setEmail(e.target.value)}
-                        style={styles.input}
-                        required
-                    />
-                    <input
-                        type="password"
-                        placeholder="Password"
-                        value={password}
-                        onChange={(e) => setPassword(e.target.value)}
-                        style={styles.input}
-                        required
-                    />
-                    <button type="submit" disabled={loading} style={styles.button}>
-                        {loading ? 'Processing...' : 'Login'}
+                    <div style={{ position: 'relative', marginBottom: '1rem' }}>
+                        <Mail size={16} style={{ position: 'absolute', left: '1rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)', pointerEvents: 'none' }} />
+                        <input
+                            type="email"
+                            placeholder="Email address"
+                            value={email}
+                            onChange={(e) => setEmail(e.target.value)}
+                            className="auth-input"
+                            style={{ paddingLeft: '2.75rem', marginBottom: 0 }}
+                            required
+                        />
+                    </div>
+                    <div style={{ position: 'relative', marginBottom: '1rem' }}>
+                        <Lock size={16} style={{ position: 'absolute', left: '1rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)', pointerEvents: 'none' }} />
+                        <input
+                            type="password"
+                            placeholder="Password"
+                            value={password}
+                            onChange={(e) => setPassword(e.target.value)}
+                            className="auth-input"
+                            style={{ paddingLeft: '2.75rem', marginBottom: 0 }}
+                            required
+                        />
+                    </div>
+                    <button type="submit" disabled={loading} className="auth-btn">
+                        {loading ? 'Signing in...' : 'Sign In'}
                     </button>
                 </form>
-                <div style={{ marginTop: '1rem', textAlign: 'center' }}>
-                    <span style={{ color: '#94a3b8' }}>New here? </span>
-                    <Link to="/register" style={{ color: '#60a5fa' }}>Create account</Link>
-                </div>
+
+                <p className="auth-footer-text">
+                    New to FindNow? <Link to="/register">Create account →</Link>
+                </p>
             </div>
         </div>
     );
 }
-
-const styles = {
-    container: { display: 'flex', justifyContent: 'center', alignItems: 'center', height: '80vh' },
-    card: { background: '#1e293b', padding: '2rem', borderRadius: '1rem', width: '350px', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.5)' },
-    input: { width: '100%', padding: '0.8rem', marginBottom: '1rem', borderRadius: '0.5rem', background: '#334155', border: '1px solid #475569', color: 'white' },
-    button: { width: '100%', padding: '0.8rem', borderRadius: '0.5rem', background: '#2563eb', color: 'white', border: 'none', cursor: 'pointer', fontWeight: 'bold' },
-    error: { background: 'rgba(239, 68, 68, 0.2)', color: '#fca5a5', padding: '0.5rem', borderRadius: '0.5rem', marginBottom: '1rem', textAlign: 'center' }
-};

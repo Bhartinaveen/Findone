@@ -66,15 +66,56 @@ const insertProducts = async (products) => {
         if (embedError) console.error("Error inserting embeddings:", embedError);
     }
 
-    // 3. Log Price History
-    const historyEntries = insertedProducts.map(p => ({
-        product_id: p.id,
-        price: p.price
-    }));
+    // 3. Log Price History (Only if price changed)
+    const productIds = insertedProducts.map(p => p.id);
+
+    // Fetch latest price for these products
+    const { data: latestHistory } = await supabase
+        .from('price_history')
+        .select('product_id, price')
+        .in('product_id', productIds)
+        .order('recorded_at', { ascending: false }); // We need a way to get distinct on product_id or just process locally
+
+    // Simpler approach given Supabase limitations on "distinct on" via JS client sometimes:
+    // We can't easily do a "latest per group" efficiently for a batch without a specific RPC or complex query.
+    // However, if we assume reasonable batch size, we can fetch latests.
+    // Better: Helper function or just fetch all history for these IDs (might be too big).
+
+    // Alternative: Use an RPC or just accept we might query a bit more.
+    // Let's rely on a reliable "get latest prices" strategy. 
+    // Since we just upserted, the 'products' table has the CURRENT price.
+    // We want to know if we should add a NEW history entry.
+    // We can try to fetch the *most recent* history entry for each.
+
+    // Let's do a loop for safety or use a custom query if possible. 
+    // Optimizing: Let's fetch the latest history entry for each ID using a Postgres view/function would be best, but here:
+    // We'll iterate check to be safe and correct, or accept a slight perf hit to query most recent.
+
+    const historyEntries = [];
+
+    for (const p of insertedProducts) {
+        // PERF TODO: Batch this check if scale increases
+        const { data: lastEntry } = await supabase
+            .from('price_history')
+            .select('price')
+            .eq('product_id', p.id)
+            .order('recorded_at', { ascending: false })
+            .limit(1)
+            .single();
+
+        // If no history (new product) OR price is different, add entry
+        if (!lastEntry || Number(lastEntry.price) !== Number(p.price)) {
+            historyEntries.push({
+                product_id: p.id,
+                price: p.price
+            });
+        }
+    }
 
     if (historyEntries.length > 0) {
         const { error: histError } = await supabase.from('price_history').insert(historyEntries);
         if (histError) console.error("Error logging price history:", histError);
+        else console.log(`Logged ${historyEntries.length} new price history entries.`);
     }
 
     return insertedProducts;
@@ -164,35 +205,57 @@ const getProductDetails = async (id) => {
         .single();
 
     if (embeddingData && embeddingData.embedding) {
-        // 1. Get similar IDs using Vector Search
-        // Note: We only trust the IDs from this RPC because the return columns might be outdated
+        // ... existing embedding logic
         const { data: recs } = await supabase.rpc('match_products', {
             query_embedding: embeddingData.embedding,
-            match_threshold: 0.6, // Slightly lower threshold to ensure results
+            match_threshold: 0.6,
             match_count: 8
         });
 
-        // 2. Filter valid IDs
         const similarIds = new Set((similar || []).map(s => s.id));
-        similarIds.add(Number(id)); // Don't recommend the product itself
+        similarIds.add(Number(id));
 
         const candidateIds = (recs || [])
             .map(r => r.id)
             .filter(rid => !similarIds.has(rid));
 
-        // 3. Hydrate with FULL product details (to ensure we get Rating/Reviews even if RPC is old)
         if (candidateIds.length > 0) {
             const { data: fullRecs } = await supabase
                 .from('products')
                 .select('*')
                 .in('id', candidateIds);
 
-            // 4. Preserve Similarity Order
             if (fullRecs) {
                 recommendations = candidateIds
                     .map(cid => fullRecs.find(p => p.id === cid))
-                    .filter(p => p); // Remove undefined if sync issue
+                    .filter(p => p);
             }
+        }
+    }
+
+    // FALLBACK: If vector search fails or yields nothing, use basic text search to populate Alternatives
+    if (recommendations.length === 0 && product.title) {
+        // Just take the first two words to cast a wider net
+        const broadSearchTerms = product.title.split(' ').slice(0, 2).join(' | ');
+        let { data: fallbackRecs } = await supabase
+            .from('products')
+            .select('*')
+            .neq('id', id)
+            .textSearch('title', broadSearchTerms)
+            .limit(8);
+
+        // If STILL empty, just grab any 8 products
+        if (!fallbackRecs || fallbackRecs.length === 0) {
+            const { data: randomRecs } = await supabase
+                .from('products')
+                .select('*')
+                .neq('id', id)
+                .limit(8);
+            fallbackRecs = randomRecs;
+        }
+
+        if (fallbackRecs) {
+            recommendations = fallbackRecs;
         }
     }
 

@@ -10,25 +10,34 @@ export default function Home() {
     const [isScraping, setIsScraping] = useState(false);
     const navigate = useNavigate();
 
+    const handleUpdate = (e) => {
+        console.log("Home received product update", e.detail);
+        if (e.detail) {
+            setProducts(prev => {
+                const combined = [...e.detail, ...prev];
+                const unique = Array.from(new Map(combined.map(item => [item.title, item])).values());
+                return unique;
+            });
+        } else {
+            loadProducts();
+        }
+    };
+
     useEffect(() => {
         loadProducts();
 
-        const handleUpdate = (e) => {
-            console.log("Home received product update", e.detail);
-            // Ideally merge or just reload. Merging is smoother.
-            if (e.detail) {
-                setProducts(prev => {
-                    const combined = [...e.detail, ...prev];
-                    const unique = Array.from(new Map(combined.map(item => [item.title, item])).values());
-                    return unique;
-                });
-            } else {
-                loadProducts();
-            }
-        };
+        const handleScrapeStart = () => setIsScraping(true);
+        const handleScrapeEnd = () => setIsScraping(false);
 
         window.addEventListener('product-update', handleUpdate);
-        return () => window.removeEventListener('product-update', handleUpdate);
+        window.addEventListener('chat-scrape-start', handleScrapeStart);
+        window.addEventListener('chat-scrape-end', handleScrapeEnd);
+        
+        return () => {
+            window.removeEventListener('product-update', handleUpdate);
+            window.removeEventListener('chat-scrape-start', handleScrapeStart);
+            window.removeEventListener('chat-scrape-end', handleScrapeEnd);
+        };
     }, []);
 
     const loadProducts = () => {
@@ -49,22 +58,17 @@ export default function Home() {
         }
     };
 
-    const performSearch = async () => {
-        if (!searchTerm.trim()) return;
-
-        // Smart Check: Do we have enough local data?
-        const localResults = products.filter(p => p.title.toLowerCase().includes(searchTerm.toLowerCase()));
-
-        if (localResults.length < 5) {
-            await handleScrape(searchTerm);
-        } else {
-            console.log("Using local results.");
+    const performSearch = () => {
+        if (products.length === 0 && searchTerm.trim()) {
+            alert("Please scrape data first.");
+            return;
         }
+        // Filtering is handled automatically by useMemo based on searchTerm state
     };
 
-    const handleSearch = async (e) => {
+    const handleSearch = (e) => {
         if (e.key === 'Enter') {
-            await performSearch();
+            performSearch();
         }
     };
 
@@ -106,7 +110,7 @@ export default function Home() {
         return products.filter(product => {
             // 1. Search Filter
             const matchesSearch = product.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                product.description.toLowerCase().includes(searchTerm.toLowerCase());
+                (product.description && product.description.toLowerCase().includes(searchTerm.toLowerCase()));
 
             // 2. Price Range Filter
             const price = parseFloat(product.price) || 0;
@@ -124,36 +128,21 @@ export default function Home() {
 
     return (
         <div className="container">
-            <header className="header">
-                {/* <h1 className="title">FindNow</h1> */}
-                <div style={{ display: 'flex', gap: '1rem' }}>
-                    <button
-                        onClick={() => handleScrape(searchTerm || 'dtata')}
-                        disabled={isScraping}
-                        style={{
-                            background: 'var(--primary)',
-                            border: 'none',
-                            color: 'white',
-                            padding: '0.5rem 1rem',
-                            borderRadius: '0.5rem',
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: '0.5rem',
-                            cursor: isScraping ? 'not-allowed' : 'pointer',
-                            opacity: isScraping ? 0.7 : 1
-                        }}
-                    >
-                        <RotateCw size={16} className={isScraping ? 'spin' : ''} />
-                        {isScraping ? 'Scraping...' : 'Scrape New Data'}
-                    </button>
-
-                </div>
+            <header className="header" style={{ justifyContent: 'flex-end' }}>
+                <button
+                    onClick={() => handleScrape(searchTerm || 'best deals')}
+                    disabled={isScraping}
+                    className="btn-primary"
+                >
+                    <RotateCw size={15} className={isScraping ? 'spin' : ''} />
+                    {isScraping ? 'Scraping...' : 'Scrape New Data'}
+                </button>
             </header>
 
             {/* Hero & Search Section */}
             <div className="hero-section">
                 <h1 className="hero-title">Discover Real Deals</h1>
-                <p className="hero-subtitle">Search for products, compare prices, and find the best offers.</p>
+                <p className="hero-subtitle">Search for products, compare prices, and find the best offers — powered by AI.</p>
 
                 <div className="search-container">
                     <input
@@ -165,78 +154,60 @@ export default function Home() {
                         onKeyDown={handleSearch}
                     />
                     <Search
-                        className="search-icon"
-                        size={24}
+                        size={20}
                         onClick={performSearch}
-                        style={{ position: 'absolute', right: '20px', top: '50%', transform: 'translateY(-50%)', color: '#94a3b8', cursor: 'pointer' }}
+                        style={{ position: 'absolute', right: '18px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)', cursor: 'pointer', transition: 'color 0.2s' }}
+                        onMouseEnter={e => e.currentTarget.style.color = 'var(--primary)'}
+                        onMouseLeave={e => e.currentTarget.style.color = 'var(--text-muted)'}
                     />
                 </div>
 
                 {/* ADVANCED FILTER BAR */}
-                <div className="filter-bar" style={{ display: 'flex', gap: '1rem', marginTop: '2rem', justifyContent: 'center', flexWrap: 'wrap' }}>
+                <div className="filter-bar">
                     <input
                         type="number"
                         placeholder="Min Price (₹)"
                         value={minPrice}
                         onChange={(e) => setMinPrice(e.target.value)}
-                        style={{ padding: '0.5rem', borderRadius: '0.5rem', border: '1px solid #334155', background: '#1e293b', color: 'white', width: '120px' }}
+                        className="filter-input"
                     />
                     <input
                         type="number"
                         placeholder="Max Price (₹)"
                         value={maxPrice}
                         onChange={(e) => setMaxPrice(e.target.value)}
-                        style={{ padding: '0.5rem', borderRadius: '0.5rem', border: '1px solid #334155', background: '#1e293b', color: 'white', width: '120px' }}
+                        className="filter-input"
                     />
-
                     <select
                         value={sortBy}
                         onChange={(e) => setSortBy(e.target.value)}
-                        style={{ padding: '0.5rem', borderRadius: '0.5rem', border: '1px solid #334155', background: '#1e293b', color: 'white' }}
+                        className="filter-select"
                     >
                         <option value="relevance">Relevance</option>
-                        <option value="price-low">Price: Low to High</option>
-                        <option value="price-high">Price: High to Low</option>
-                        <option value="rating">Rating: High to Low</option>
+                        <option value="price-low">Price: Low → High</option>
+                        <option value="price-high">Price: High → Low</option>
+                        <option value="rating">Rating: Best First</option>
                     </select>
-
                     <button
-                        onClick={() => handleScrape(searchTerm)}
-                        disabled={isScraping}
-                        style={{
-                            background: '#fbbf24',
-                            color: 'black',
-                            border: 'none',
-                            padding: '0.5rem 1.5rem',
-                            borderRadius: '0.5rem',
-                            fontWeight: 'bold',
-                            cursor: isScraping ? 'not-allowed' : 'pointer',
-                            opacity: isScraping ? 0.7 : 1,
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: '0.5rem'
+                        onClick={() => {
+                            if (products.length === 0) {
+                                alert("No data found! Please use 'Scrape New Data' button first to load products.");
+                                return;
+                            }
+                            // Filters are applied automatically via useMemo — nothing more to do
+                            // This is just a visual confirmation trigger
                         }}
+                        className="btn-warning"
                     >
-                        <RotateCw size={16} className={isScraping ? 'spin' : ''} />
-                        {isScraping ? 'Searching...' : 'Find Deals'}
+                        <Search size={15} />
+                        Find Deals
                     </button>
-
                     <button
                         onClick={handleReset}
-                        style={{
-                            background: '#334155',
-                            color: 'white',
-                            border: 'none',
-                            padding: '0.5rem 1rem',
-                            borderRadius: '0.5rem',
-                            cursor: 'pointer',
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: '0.5rem'
-                        }}
+                        className="btn-secondary"
                         title="Reset Search & Filters"
                     >
-                        <RotateCcw size={16} />
+                        <RotateCcw size={15} />
                         Reset
                     </button>
                 </div>
@@ -246,42 +217,93 @@ export default function Home() {
             <OfferFeed />
 
             {/* Product Grid */}
-            <div className="product-grid">
+            <div className="product-grid" style={{ position: 'relative', minHeight: '300px' }}>
+                {isScraping && (
+                    <div style={{
+                        position: 'absolute',
+                        top: 0, left: 0, right: 0, bottom: 0,
+                        background: 'rgba(10, 11, 26, 0.7)',
+                        zIndex: 10,
+                        display: 'flex',
+                        flexDirection: 'column',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        borderRadius: '2rem',
+                        backdropFilter: 'blur(4px)'
+                    }}>
+                        <div className="spin" style={{ width: '40px', height: '40px', border: '3px solid var(--primary)', borderTopColor: 'transparent', borderRadius: '50%', marginBottom: '1rem' }}></div>
+                        <p style={{ fontWeight: 600, color: 'var(--text)' }}>Scraping Fresh Data...</p>
+                    </div>
+                )}
+                
                 {filteredProducts.length > 0 ? (
                     filteredProducts.map(product => (
-                        <div key={product.id} className="product-card" onClick={() => navigate(`/product/${product.id}`, { state: { product } })}>
-                            <img
-                                src={product.image_url || 'https://placehold.co/300?text=No+Image'}
-                                alt={product.title}
-                                className="product-image"
-                                onError={(e) => { e.target.onerror = null; e.target.src = 'https://placehold.co/300?text=No+Image'; }}
-                            />
-                            <div className="product-info">
-                                <h3 className="product-title">{product.title}</h3>
-                                <div className="product-meta">
-                                    <div className="product-price">₹{product.price}</div>
-                                    <div className="product-category">{product.category}</div>
-                                </div>
-                                {product.source && (
-                                    <div
-                                        className="product-source"
-                                        style={{ fontSize: '0.8rem', color: 'var(--primary)', marginTop: '0.5rem', cursor: 'pointer' }}
-                                        onClick={(e) => {
-                                            e.stopPropagation();
-                                            window.open(product.product_url, '_blank');
-                                        }}
-                                    >
-                                        Via {product.source} ↗
+                        <div
+                            key={product.id}
+                            className="product-card"
+                            onClick={() => navigate(`/product/${product.id}`, { state: { product } })}
+                        >
+                            <div className="product-card-inner">
+
+                                {/* ── FRONT FACE ── */}
+                                <div className="product-card-front">
+                                    <div className="product-image-wrap">
+                                        <img
+                                            src={product.image_url || 'https://placehold.co/300/111827/818cf8?text=?'}
+                                            alt={product.title}
+                                            className="product-image"
+                                            onError={(e) => { e.target.onerror = null; e.target.src = 'https://placehold.co/300/111827/818cf8?text=?'; }}
+                                        />
                                     </div>
-                                )}
+                                    <div className="product-info">
+                                        <h3 className="product-title">{product.title}</h3>
+                                        <div className="product-meta">
+                                            <div className="product-price">₹{product.price}</div>
+                                            <div className="product-category">{product.category}</div>
+                                        </div>
+                                        {product.source && (
+                                            <div
+                                                className="product-source"
+                                                onClick={(e) => { e.stopPropagation(); window.open(product.product_url, '_blank'); }}
+                                            >
+                                                Via {product.source} ↗
+                                            </div>
+                                        )}
+                                    </div>
+                                </div>
+
+                                {/* ── BACK FACE ── */}
+                                <div className="product-card-back">
+                                    <img
+                                        src={product.image_url || 'https://placehold.co/80/111827/818cf8?text=?'}
+                                        alt={product.title}
+                                        className="product-back-image"
+                                        onError={(e) => { e.target.onerror = null; e.target.src = 'https://placehold.co/80/111827/818cf8?text=?'; }}
+                                    />
+                                    <div className="product-back-title">{product.title}</div>
+                                    <div className="product-back-price">₹{product.price}</div>
+                                    <button
+                                        className="product-view-btn"
+                                        onClick={(e) => { e.stopPropagation(); navigate(`/product/${product.id}`, { state: { product } }); }}
+                                    >
+                                        ✦ View Now
+                                    </button>
+                                    {product.source && (
+                                        <div className="product-back-source">via {product.source}</div>
+                                    )}
+                                </div>
+
                             </div>
                         </div>
                     ))
                 ) : (
-                    <div style={{ gridColumn: '1/-1', textAlign: 'center', padding: '4rem', color: 'var(--secondary)' }}>
-                        <h3>No products found</h3>
-                        <p>Try adjusting your search or filters.</p>
-                    </div>
+                    !isScraping && (
+                        <div className="empty-state" style={{ width: '100%', gridColumn: '1 / -1' }}>
+                            <Search size={48} strokeWidth={1} />
+                            <h3>No products found</h3>
+                            <p>Try adjusting your search or filters, or scrape new data.</p>
+                        </div>
+                    )
                 )}
             </div>
         </div>

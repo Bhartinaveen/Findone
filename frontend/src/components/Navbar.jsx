@@ -2,10 +2,12 @@ import React, { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { getApiUrl } from '../api';
-import { LogOut, User, Bell, Heart } from 'lucide-react';
+import { LogOut, Bell, Heart, Sparkles, Sun, Moon } from 'lucide-react';
+import { useTheme } from '../context/ThemeContext';
 
 export default function Navbar() {
     const { user, logout } = useAuth();
+    const { theme, toggleTheme } = useTheme();
     const navigate = useNavigate();
     const [notifications, setNotifications] = useState([]);
     const [showNotifs, setShowNotifs] = useState(false);
@@ -21,7 +23,7 @@ export default function Navbar() {
                 } catch (e) { console.error(e); }
             };
             fetchNotifs();
-            const interval = setInterval(fetchNotifs, 30000); // Poll every 30s
+            const interval = setInterval(fetchNotifs, 30000);
             return () => clearInterval(interval);
         }
     }, [user]);
@@ -37,31 +39,63 @@ export default function Navbar() {
     const unreadCount = notifications.filter(n => !n.is_read).length;
 
     return (
-        <nav style={styles.nav}>
-            <Link to="/" style={styles.logo}>FindNow AI</Link>
+        <nav className="navbar">
+            <Link to="/" className="navbar-logo">
+                <Sparkles size={16} style={{ display: 'inline', marginRight: '6px', verticalAlign: 'middle' }} />
+                FindNow AI
+            </Link>
 
-            <div style={styles.links}>
+            <div className="navbar-links">
                 {user ? (
                     <>
-                        <Link to="/wishlist" style={styles.iconBtn} title="My Wishlist">
-                            <Heart size={20} />
+                        <button onClick={toggleTheme} className="navbar-icon-btn" title="Toggle Theme" style={{ marginRight: '4px' }}>
+                            {theme === 'dark' ? <Sun size={18} /> : <Moon size={18} />}
+                        </button>
+                        <Link to="/wishlist" className="navbar-icon-btn" title="My Wishlist">
+                            <Heart size={18} />
                         </Link>
 
                         <div style={{ position: 'relative' }}>
-                            <button onClick={() => setShowNotifs(!showNotifs)} style={styles.iconBtn} title="Notifications">
-                                <Bell size={20} />
-                                {unreadCount > 0 && <span style={styles.badge}>{unreadCount}</span>}
+                            <button
+                                onClick={() => setShowNotifs(!showNotifs)}
+                                className="navbar-icon-btn"
+                                title="Notifications"
+                            >
+                                <Bell size={18} />
+                                {unreadCount > 0 && (
+                                    <span className="navbar-badge">{unreadCount}</span>
+                                )}
                             </button>
 
                             {showNotifs && (
-                                <div style={styles.dropdown}>
-                                    <h4 style={{ margin: '0 0 0.5rem 0', color: 'white' }}>Notifications</h4>
-                                    {notifications.length === 0 ? <p style={{ fontSize: '0.8rem', color: '#94a3b8' }}>No new alerts</p> : (
-                                        <div style={{ maxHeight: '200px', overflowY: 'auto' }}>
+                                <div className="navbar-dropdown">
+                                    <h4 style={{ margin: '0 0 0.75rem 0', color: 'var(--text)', fontSize: '0.9rem', fontWeight: 700 }}>
+                                        Notifications
+                                    </h4>
+                                    {notifications.length === 0 ? (
+                                        <p style={{ fontSize: '0.82rem', color: 'var(--text-muted)', textAlign: 'center', padding: '1rem 0' }}>
+                                            No new alerts
+                                        </p>
+                                    ) : (
+                                        <div style={{ maxHeight: '220px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
                                             {notifications.map(n => (
-                                                <div key={n.id} onClick={() => markRead(n.id)} style={{ padding: '0.5rem', borderBottom: '1px solid #334155', opacity: n.is_read ? 0.5 : 1, cursor: 'pointer' }}>
-                                                    <div style={{ fontSize: '0.8rem', color: '#e2e8f0' }}>{n.message}</div>
-                                                    <div style={{ fontSize: '0.6rem', color: '#64748b' }}>{new Date(n.created_at).toLocaleDateString()}</div>
+                                                <div
+                                                    key={n.id}
+                                                    onClick={() => markRead(n.id)}
+                                                    style={{
+                                                        padding: '0.6rem 0.75rem',
+                                                        borderRadius: '0.5rem',
+                                                        background: n.is_read ? 'transparent' : 'rgba(99,102,241,0.08)',
+                                                        border: '1px solid var(--border)',
+                                                        opacity: n.is_read ? 0.5 : 1,
+                                                        cursor: 'pointer',
+                                                        transition: 'all 0.2s'
+                                                    }}
+                                                >
+                                                    <div style={{ fontSize: '0.8rem', color: 'var(--text)', lineHeight: 1.4 }}>{n.message}</div>
+                                                    <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginTop: '0.25rem' }}>
+                                                        {new Date(n.created_at).toLocaleDateString()}
+                                                    </div>
                                                 </div>
                                             ))}
                                         </div>
@@ -70,31 +104,22 @@ export default function Navbar() {
                             )}
                         </div>
 
-                        <span style={styles.user}>Hello, {user.fullName || 'User'}</span>
-                        <button onClick={logout} style={styles.btn}>
-                            <LogOut size={16} /> Logout
+                        <span className="navbar-user-name">Hi, {user.fullName?.split(' ')[0] || 'User'} 👋</span>
+
+                        <button onClick={logout} className="navbar-logout-btn">
+                            <LogOut size={15} /> Logout
                         </button>
                     </>
                 ) : (
                     <>
-                        <Link to="/login" style={styles.link}>Login</Link>
-                        <Link to="/register" style={{ ...styles.link, ...styles.primary }}>Register</Link>
+                        <button onClick={toggleTheme} className="navbar-icon-btn" title="Toggle Theme" style={{ marginRight: '8px' }}>
+                            {theme === 'dark' ? <Sun size={18} /> : <Moon size={18} />}
+                        </button>
+                        <Link to="/login" className="navbar-link">Login</Link>
+                        <Link to="/register" className="navbar-btn-primary">Get Started</Link>
                     </>
                 )}
             </div>
         </nav>
     );
 }
-
-const styles = {
-    nav: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '1rem 2rem', background: '#0f172a', borderBottom: '1px solid #1e293b' },
-    logo: { fontSize: '1.5rem', fontWeight: 'bold', color: '#60a5fa', textDecoration: 'none' },
-    links: { display: 'flex', gap: '1rem', alignItems: 'center' },
-    link: { color: '#94a3b8', textDecoration: 'none', fontWeight: '500' },
-    user: { color: 'white', marginRight: '1rem' },
-    btn: { background: 'none', border: '1px solid #334155', color: '#94a3b8', padding: '0.4rem 0.8rem', borderRadius: '0.4rem', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.5rem' },
-    primary: { background: '#2563eb', color: 'white', padding: '0.4rem 0.8rem', borderRadius: '0.4rem' },
-    iconBtn: { background: 'none', border: 'none', color: '#94a3b8', cursor: 'pointer', position: 'relative', padding: '0.5rem' },
-    badge: { position: 'absolute', top: 0, right: 0, background: '#ef4444', color: 'white', fontSize: '0.6rem', width: '16px', height: '16px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center' },
-    dropdown: { position: 'absolute', top: '100%', right: 0, width: '250px', background: '#1e293b', border: '1px solid #334155', borderRadius: '0.5rem', padding: '1rem', zIndex: 50, boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.5)' }
-};

@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const supabase = require('../config/supabaseClient');
 const jwt = require('jsonwebtoken');
+const { sendNotification } = require('../services/notificationService');
 
 const JWT_SECRET = process.env.JWT_SECRET || 'supersecretkey123';
 
@@ -59,6 +60,28 @@ router.post('/add', async (req, res) => {
         }
 
         res.json(data);
+
+        // Check if the current price already meets the target
+        // We do this asynchronously (no await on purpose to not block response)
+        (async () => {
+            try {
+                if (desired_max_price) {
+                    const { data: product } = await supabase
+                        .from('products')
+                        .select('price, title')
+                        .eq('id', product_id)
+                        .single();
+
+                    if (product && Number(product.price) <= Number(desired_max_price)) {
+                        const message = `Price Drop Alert! ${product.title} is now ₹${product.price} (Target: ₹${desired_max_price})`;
+                        await sendNotification(req.user.id, message, 'price_drop');
+                    }
+                }
+            } catch (alertErr) {
+                console.error("Immediate Alert Check Error:", alertErr);
+            }
+        })();
+
     } catch (err) {
         console.error("Wishlist Add Error:", err);
         res.status(500).json({ error: "Failed to add to wishlist" });

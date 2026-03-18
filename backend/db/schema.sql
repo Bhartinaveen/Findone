@@ -89,3 +89,16 @@ create table if not exists users (
   full_name text,
   created_at timestamp with time zone default timezone('utc'::text, now()) not null
 );
+
+-- Notifications Table
+create table if not exists notifications (
+  id bigint primary key generated always as identity,
+  user_id bigint references users(id) on delete cascade,
+  message text not null,
+  type text check (type in ('price_drop', 'system_alert', 'offer_alert')),
+  is_read boolean default false,
+  created_at timestamp with time zone default timezone('utc'::text, now()) not null
+);
+
+-- Index for fast user retrieval
+create index if not exists idx_notifications_user_id on notifications(user_id);

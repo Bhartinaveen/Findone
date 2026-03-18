@@ -40,17 +40,17 @@ export default function Wishlist() {
         }
     };
 
-    if (!user) return <div style={{ color: 'white', textAlign: 'center', marginTop: '3rem' }}>Please Login to view wishlist</div>;
+    if (!user) return <div style={{ color: 'var(--text)', textAlign: 'center', marginTop: '3rem' }}>Please Login to view wishlist</div>;
 
     return (
         <div className="container">
-            <button onClick={() => navigate('/')} style={{ background: 'none', border: 'none', color: 'white', cursor: 'pointer', marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+            <button onClick={() => navigate('/')} style={{ background: 'none', border: 'none', color: 'var(--text)', cursor: 'pointer', marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                 <ArrowLeft /> Back to Search
             </button>
             <h1 style={{ marginBottom: '2rem' }}>My Wishlist & Alerts</h1>
 
             {loading ? <div className="spin"></div> : (
-                items.length === 0 ? <p style={{ color: '#94a3b8' }}>Your wishlist is empty.</p> : (
+                items.length === 0 ? <p style={{ color: 'var(--text-muted)' }}>Your wishlist is empty.</p> : (
                     <div className="product-grid">
                         {items.map(({ id, product, desired_max_price }) => (
                             <div key={id} className="product-card" style={{ position: 'relative' }}>
@@ -77,7 +77,7 @@ export default function Wishlist() {
                                     </div>
                                     <button
                                         onClick={() => window.location.href = `/product/${product.id}`}
-                                        style={{ width: '100%', marginTop: '0.5rem', padding: '0.5rem', background: '#334155', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer' }}
+                                        style={{ width: '100%', marginTop: '0.5rem', padding: '0.5rem', background: 'var(--primary)', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer' }}
                                     >
                                         View
                                     </button>

@@ -1,5 +1,4 @@
 const puppeteer = require('puppeteer');
-const { getMockProducts } = require('./mockData');
 
 async function scrapeProducts(query = 't-shirt') {
    console.log(`--- SCRAPER UPDATED V2 Loaded ---`);
@@ -359,7 +358,7 @@ async function scrapeSite(browser, url, source, selector, query) {
                   if (queryTokens.length === 0) return true;
 
                   const hitCount = queryTokens.filter(token => lowerTitle.includes(token)).length;
-                  return (hitCount / queryTokens.length) >= 0.5;
+                  return (hitCount / queryTokens.length) >= 0.33; // Relaxed threshold
                };
 
                if (isGoodTitle && isGoodPrice && isGoodImage && isRelevant(title, query)) {

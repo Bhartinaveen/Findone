@@ -62,4 +62,4 @@ async function sendNotification(userId, message, type) {
     }
 }
 
-module.exports = { checkPriceAlerts };
+module.exports = { checkPriceAlerts, sendNotification };

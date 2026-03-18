@@ -36,18 +36,25 @@ export default function ChatWidget({ onRecommend }) {
         setInput('');
         setLoading(true);
 
-        const { answer, products } = await sendChat(input);
+        // Notify Home page that scraping might start
+        window.dispatchEvent(new CustomEvent('chat-scrape-start'));
 
-        setMessages(prev => [...prev, { role: 'bot', content: answer }]);
+        try {
+            const { answer, products } = await sendChat(input);
+            setMessages(prev => [...prev, { role: 'bot', content: answer }]);
 
-        if (products && products.length > 0) {
-            setMessages(prev => [...prev, { role: 'bot-products', content: products }]);
-
-            // Notify Home page to update
-            window.dispatchEvent(new CustomEvent('product-update', { detail: products }));
+            if (products && products.length > 0) {
+                setMessages(prev => [...prev, { role: 'bot-products', content: products }]);
+                // Notify Home page to update
+                window.dispatchEvent(new CustomEvent('product-update', { detail: products }));
+            }
+        } catch (error) {
+            console.error("Chat error:", error);
+            setMessages(prev => [...prev, { role: 'bot', content: "Sorry, I encountered an error. Please try again." }]);
+        } finally {
+            setLoading(false);
+            window.dispatchEvent(new CustomEvent('chat-scrape-end'));
         }
-
-        setLoading(false);
     };
 
     const toggleChat = () => {
@@ -74,17 +81,18 @@ export default function ChatWidget({ onRecommend }) {
             {isOpen && (
                 <div className="chat-widget">
                     <div className="chat-header" style={{ justifyContent: 'space-between' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                            <MessageCircle size={20} />
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
+                            <div className="chat-header-dot"></div>
+                            <MessageCircle size={18} />
                             FindNow Assistant
                         </div>
                         <button
                             onClick={resetChat}
-                            style={{ background: 'transparent', border: 'none', color: 'white', cursor: 'pointer', display: 'flex', alignItems: 'center' }}
+                            style={{ background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.15)', color: 'rgba(255,255,255,0.8)', cursor: 'pointer', display: 'flex', alignItems: 'center', borderRadius: '0.4rem', padding: '0.25rem 0.6rem', gap: '4px', fontSize: '0.78rem', transition: 'all 0.2s' }}
                             title="Start New Chat"
                         >
-                            <RotateCcw size={16} />
-                            <span style={{ fontSize: '0.8rem', marginLeft: '4px' }}>New Chat</span>
+                            <RotateCcw size={13} />
+                            New Chat
                         </button>
                     </div>
 

@@ -5,8 +5,10 @@ require('dotenv').config();
 
 // Initialize Gemini
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
-// Fallback to flash, but handle errors gracefully
-const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
+// Use a sequence of models to handle availability issues
+const MODEL_CANDIDATES = ["gemini-2.5-flash", "gemini-2.5-pro", "gemini-pro"];
+let currentModelIdx = 0;
+let model = genAI.getGenerativeModel({ model: MODEL_CANDIDATES[currentModelIdx] });
 
 async function searchProducts(query) {
     // Graceful embedding failure
@@ -45,17 +47,35 @@ async function getChatResponse(userQuery, relevantProducts) {
       User Query: ${userQuery}
     `;
 
-    try {
-        const result = await model.generateContent(prompt);
-        const response = await result.response;
-        return response.text();
-    } catch (error) {
-        console.error("Gemini API Error:", error.message);
-        if (error.message.includes("404") || error.message.includes("not found")) {
-            return "⚠️ **API Error:** The Gemini API Key appears to be invalid or missing access to the 'gemini-2.5-flash' model. Please verify your key at [aistudio.google.com](https://aistudio.google.com).";
+    for (let attempt = 1; attempt <= 3; attempt++) {
+        try {
+            const result = await model.generateContent(prompt);
+            const response = await result.response;
+            return response.text();
+        } catch (error) {
+            console.error(`Gemini API Error (Attempt ${attempt}):`, error.message);
+
+            // Fallback strategy: Switch to next candidate model if current one 404s or 503s
+            if (error.message.includes('404') || error.message.includes('not found') || error.message.includes('503') || error.message.includes('429')) {
+                currentModelIdx = (currentModelIdx + 1) % MODEL_CANDIDATES.length;
+                console.log(`Switching to backup model for Chat: ${MODEL_CANDIDATES[currentModelIdx]}`);
+                model = genAI.getGenerativeModel({ model: MODEL_CANDIDATES[currentModelIdx] });
+            }
+
+            // Retry on 503 or 429
+            if ((error.message.includes('503') || error.message.includes('429')) && attempt < 3) {
+                const delay = 3000 * attempt;
+                console.log(`Waiting ${delay}ms before retrying chat generation...`);
+                await new Promise(resolve => setTimeout(resolve, delay));
+                continue;
+            }
+
+            if (attempt === 3) {
+                return "I'm having trouble connecting to the AI due to high demand. Please try again later.";
+            }
         }
-        return "I'm having trouble connecting to the AI. Please try again later.";
     }
+    return "I'm having trouble connecting to the AI due to high demand. Please try again later.";
 }
 
 module.exports = { searchProducts, getChatResponse };

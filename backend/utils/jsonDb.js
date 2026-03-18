@@ -9,6 +9,8 @@ async function ensureFile(filePath) {
     try {
         await fs.access(filePath);
     } catch {
+        // Ensure the directory exists before writing the file
+        await fs.mkdir(path.dirname(filePath), { recursive: true });
         await fs.writeFile(filePath, '[]', 'utf8');
     }
 }

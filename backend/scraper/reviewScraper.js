@@ -27,12 +27,8 @@ async function scrapeReviews(productUrl) {
         });
 
         const page = await browser.newPage();
-
-        // Randomize User Agent
         const userAgent = USER_AGENTS[Math.floor(Math.random() * USER_AGENTS.length)];
         await page.setUserAgent(userAgent);
-
-        // Add extra headers to look like a real browser
         await page.setExtraHTTPHeaders({
             'Accept-Language': 'en-US,en;q=0.9',
             'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8',
@@ -45,13 +41,9 @@ async function scrapeReviews(productUrl) {
         });
 
         console.log(`Scraping reviews from: ${productUrl} (UA: ${userAgent.slice(0, 20)}...)`);
-
-        // NetworkIdle0 is strict; domcontentloaded is faster/safer for scraping
         await page.goto(productUrl, { waitUntil: 'domcontentloaded', timeout: 45000 });
 
-        // Scroll to trigger lazy loading of reviews
         await page.evaluate(async () => {
-            // Scroll down to at least 2000px or bottom of page
             const maxScroll = Math.min(document.body.scrollHeight, 5000);
             let current = 0;
             while (current < maxScroll) {
@@ -61,107 +53,65 @@ async function scrapeReviews(productUrl) {
             }
         });
 
-        // Wait a bit for dynamic content
         await new Promise(r => setTimeout(r, 1500));
 
-        // Site-Specific Scraping Strategies
         const reviewText = await page.evaluate(() => {
             const url = window.location.href;
             let reviews = [];
-
-            // Helper to clean text
             const clean = (txt) => txt ? txt.replace(/\s+/g, ' ').trim() : '';
 
-            // 1. AMAZON
             if (url.includes('amazon')) {
-                // Primary: Data hooks
                 document.querySelectorAll('div[data-hook="review"]').forEach(el => {
                     const body = el.querySelector('span[data-hook="review-body"]');
                     if (body) reviews.push(clean(body.innerText));
                 });
-
-                // Fallback: Class based
                 if (reviews.length === 0) {
-                    document.querySelectorAll('.review-text-content').forEach(el => {
+                    document.querySelectorAll('.review-text-content, .a-size-base.review-text').forEach(el => {
                         reviews.push(clean(el.innerText));
                     });
                 }
-            }
-            // 2. FLIPKART
-            else if (url.includes('flipkart')) {
-                // Class _2wzgFH is common for the review row
-                const rows = document.querySelectorAll('div.col._2wzgFH');
-                if (rows.length > 0) {
-                    rows.forEach(row => {
-                        // Review text is usually in a div that expands
-                        const contentDiv = row.querySelector('div.t-ZTKy > div > div');
-                        if (contentDiv) reviews.push(clean(contentDiv.innerText));
-                        else reviews.push(clean(row.innerText));
-                    });
-                } else {
-                    // Fallback to searching for specific classes commonly used
-                    document.querySelectorAll('div.t-ZTKy').forEach(el => reviews.push(clean(el.innerText)));
+            } else if (url.includes('flipkart')) {
+                const containers = document.querySelectorAll('.ZmyHeS, .col._2wzgFH, ._27M-N_, ._2181Yn');
+                containers.forEach(row => {
+                    const contentDiv = row.querySelector('.t-ZTKy, ._2-NqiM');
+                    if (contentDiv) reviews.push(clean(contentDiv.innerText));
+                    else reviews.push(clean(row.innerText));
+                });
+                if (reviews.length === 0) {
+                    document.querySelectorAll('div.t-ZTKy > div > div').forEach(el => reviews.push(clean(el.innerText)));
                 }
-            }
-            // 3. MEESHO
-            else if (url.includes('meesho')) {
-                // Look for "Product Reviews" section
-                // Helper: Meesho classes are hashed often, look for structural clues
-                const cards = document.querySelectorAll('[class*="ReviewCard"]');
+            } else if (url.includes('meesho')) {
+                const cards = document.querySelectorAll('[class*="ReviewCard"], .sc-bcPKhP');
                 cards.forEach(card => {
-                    const textEl = card.querySelector('[class*="Comment"]');
+                    const textEl = card.querySelector('[class*="Comment"], .sc-hKgILg');
                     if (textEl) reviews.push(clean(textEl.innerText));
                 });
-            }
-            // 4. MYNTRA
-            else if (url.includes('myntra')) {
-                document.querySelectorAll('.user-review-reviewTextWrapper').forEach(el => {
+            } else if (url.includes('myntra')) {
+                document.querySelectorAll('.user-review-reviewTextWrapper, .detailed-reviews-userReviewText').forEach(el => {
+                    reviews.push(clean(el.innerText));
+                });
+            } else if (url.includes('ajio')) {
+                document.querySelectorAll('.review-content, .customer-review-text, .review-desc').forEach(el => {
                     reviews.push(clean(el.innerText));
                 });
             }
-            // 5. AJIO (New)
-            else if (url.includes('ajio')) {
-                // Ajio is tricky, often loads reviews in a separate section or not at all on initial load.
-                // Attempt to find common review containers
-                const reviewBlocks = document.querySelectorAll('.review-section, .customer-reviews, .review-desc');
-                reviewBlocks.forEach(el => reviews.push(clean(el.innerText)));
 
-                if (reviews.length === 0) {
-                    // Try finding elements with "review" in class name that are likely text
-                    const possibleReviews = document.querySelectorAll('div[class*="review"], span[class*="review"]');
-                    possibleReviews.forEach(el => {
-                        if (el.innerText.length > 20) reviews.push(clean(el.innerText));
-                    });
-                }
-            }
-
-            // GENERIC FALLBACK (If site specific failed or it's another site)
             if (reviews.length === 0) {
-                const genericSelectors = [
-                    'div.review-text', 'p.review-body', '.review-content', 'blockquote',
-                    '[itemprop="reviewBody"]', '.description', '.comment-text',
-                    '[data-testid="review-text"]'
-                ];
+                const genericSelectors = ['div.review-text', 'p.review-body', '.review-content', '[itemprop="reviewBody"]', '.comment-text'];
                 genericSelectors.forEach(sel => {
                     document.querySelectorAll(sel).forEach(el => reviews.push(clean(el.innerText)));
                 });
             }
 
-            // CLEANUP & LIMIT
-            // Join first 25 reviews to avoid token limits
-            return reviews.slice(0, 25).join('\n\n');
+            return reviews.filter(r => r.length > 10).slice(0, 30).join('\n\n');
         });
 
-        // 2nd Pass: If still empty, grab raw paragraphs
         if (!reviewText || reviewText.length < 50) {
             console.log("Structured scraping failed, falling back to paragraph grab...");
             const rawText = await page.evaluate(() => {
                 let txt = "";
-                // Grab paragraphs that look like sentences (length > 30, contains spaces)
                 document.querySelectorAll('p, div, span').forEach(p => {
-                    // Heuristic: Avoid nav items, footers, etc. by length and content
                     if (p.innerText.length > 40 && p.innerText.length < 500 && p.innerText.includes(' ')) {
-                        // Simple check to avoid code/json dumps
                         if (!p.innerText.includes('{') && !p.innerText.includes('function')) {
                             txt += p.innerText + "\n";
                         }
@@ -169,7 +119,6 @@ async function scrapeReviews(productUrl) {
                 });
                 return txt;
             });
-            // Limit fallback text size
             return rawText.slice(0, 10000);
         }
 
@@ -183,4 +132,288 @@ async function scrapeReviews(productUrl) {
     }
 }
 
-module.exports = { scrapeReviews };
+async function scrapeRatingDistribution(productUrl, fallbackRating = null) {
+    let browser = null;
+    try {
+        browser = await puppeteer.launch({
+            headless: "new",
+            args: [
+                '--no-sandbox',
+                '--disable-setuid-sandbox',
+                '--disable-blink-features=AutomationControlled',
+                '--window-size=1920,1080',
+                '--disable-infobars',
+                '--excludeSwitches=enable-automation',
+                '--use-gl=egl'
+            ]
+        });
+        const page = await browser.newPage();
+        const userAgent = USER_AGENTS[Math.floor(Math.random() * USER_AGENTS.length)];
+        await page.setUserAgent(userAgent);
+        await page.setExtraHTTPHeaders({
+            'Accept-Language': 'en-US,en;q=0.9',
+            'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8',
+            'Upgrade-Insecure-Requests': '1',
+            'Sec-Fetch-Dest': 'document',
+            'Sec-Fetch-Mode': 'navigate',
+            'Sec-Fetch-Site': 'none',
+            'Sec-Fetch-User': '?1',
+            'Cache-Control': 'max-age=0'
+        });
+
+        // Intercept XHR/fetch API responses that may contain rating data loaded dynamically
+        let interceptedRating = null;
+        await page.setRequestInterception(true);
+        page.on('request', req => req.continue());
+        page.on('response', async (response) => {
+            try {
+                const url = response.url();
+                const ct = response.headers()['content-type'] || '';
+                if (!ct.includes('json')) return;
+                if (url.includes('rating') || url.includes('review') || url.includes('aggregate')) {
+                    const json = await response.json().catch(() => null);
+                    if (!json) return;
+                    const str = JSON.stringify(json);
+                    const distMatch = str.match(/"ratingDistribution"\s*:\s*(\{[^}]+\})/);
+                    if (distMatch) {
+                        try { interceptedRating = JSON.parse(distMatch[1]); } catch(e) {}
+                    }
+                    if (!interceptedRating) {
+                        const allKeysPresent = [5,4,3,2,1].every(s => json[s] !== undefined || json[`${s}`] !== undefined);
+                        if (allKeysPresent) interceptedRating = json;
+                    }
+                }
+            } catch(e) {}
+        });
+
+        console.log(`[Ratings] Fetching: ${productUrl}`);
+        await page.goto(productUrl, { waitUntil: 'domcontentloaded', timeout: 45000 });
+
+        // Wait specifically for rating-related elements to appear on the page
+        const siteSelectors = {
+            amazon: '.a-histogram-row',
+            flipkart: '._2En60Z, ._3EnG0X, ._27M-N_',
+            myntra: '[class*="index-ratingBarContainer"]',
+            ajio: '[class*="RatingBar"], [class*="ratingBar"], .rating-bar',
+            nykaa: '[class*="ratingCount"], [class*="RatingBar"], [class*="ProductRatings-Total"]',
+            meesho: '[class*="RatingBar"], [class*="ProgressBar"]',
+        };
+        const domain = Object.keys(siteSelectors).find(d => productUrl.includes(d));
+        if (domain) {
+            try {
+                await page.waitForSelector(siteSelectors[domain], { timeout: 6000 });
+                console.log(`[Ratings] Found rating selector for ${domain}`);
+            } catch(e) {
+                console.log(`[Ratings] Selector wait timed out for ${domain}, continuing...`);
+            }
+        }
+
+        // Scroll down slowly to trigger lazy-loaded rating sections
+        await page.evaluate(async () => {
+            const maxScroll = Math.min(document.body.scrollHeight, 8000);
+            let current = 0;
+            while (current < maxScroll) {
+                window.scrollBy(0, 600);
+                current += 600;
+                await new Promise(r => setTimeout(r, 200));
+            }
+        });
+
+        // Give JS frameworks extra time to render after scrolling
+        await new Promise(r => setTimeout(r, 2500));
+
+        // STRATEGY 1: Use intercepted API response (most reliable for SPAs)
+        if (interceptedRating) {
+            console.log(`[Ratings] Got rating from network interception`);
+            const result = { 5: { count: 0, percentage: 0 }, 4: { count: 0, percentage: 0 }, 3: { count: 0, percentage: 0 }, 2: { count: 0, percentage: 0 }, 1: { count: 0, percentage: 0 } };
+            let total = 0;
+            [5,4,3,2,1].forEach(s => {
+                const v = interceptedRating[s] || interceptedRating[`${s}`] || 0;
+                result[s].count = parseInt(v) || 0;
+                total += result[s].count;
+            });
+            if (total > 0) {
+                [5,4,3,2,1].forEach(s => { result[s].percentage = Math.round((result[s].count / total) * 100); });
+            }
+            if (Object.values(result).some(v => v.count > 0 || v.percentage > 0)) return result;
+        }
+
+        // STRATEGY 2: Parse application/ld+json structured data (works on many sites)
+        const ldJsonRating = await page.evaluate(() => {
+            const scripts = document.querySelectorAll('script[type="application/ld+json"]');
+            for (const script of scripts) {
+                try {
+                    const data = JSON.parse(script.textContent);
+                    const items = Array.isArray(data) ? data : [data];
+                    for (const item of items) {
+                        const agg = item.aggregateRating ||
+                            (item['@graph'] && item['@graph'].find(g => g && g.aggregateRating) || {}).aggregateRating;
+                        if (agg) {
+                            const score = parseFloat(agg.ratingValue || agg.rating || 0);
+                            const count = parseInt(agg.reviewCount || agg.ratingCount || 0);
+                            if (score >= 1 && score <= 5) return { score, count };
+                        }
+                    }
+                } catch(e) {}
+            }
+            return null;
+        });
+
+        // STRATEGY 3: DOM-based extraction with site-specific selectors
+        const ratings = await page.evaluate(() => {
+            const url = window.location.href;
+            let result = {
+                5: { count: 0, percentage: 0 },
+                4: { count: 0, percentage: 0 },
+                3: { count: 0, percentage: 0 },
+                2: { count: 0, percentage: 0 },
+                1: { count: 0, percentage: 0 }
+            };
+
+            const convertToPct = (res) => {
+                const total = Object.values(res).reduce((a, b) => a + (b.count || 0), 0);
+                if (total > 0) {
+                    for (let s in res) {
+                        res[s].percentage = Math.round(((res[s].count || 0) / total) * 100);
+                    }
+                }
+                return res;
+            };
+
+            // AMAZON
+            if (url.includes('amazon')) {
+                document.querySelectorAll('.a-histogram-row').forEach(row => {
+                    const starText = row.innerText.match(/(\d)\s*star/i);
+                    const percentText = row.innerText.match(/(\d+)%/);
+                    const countText = row.innerText.match(/\((\d+,?\d*)\)/) || row.getAttribute('title')?.match(/(\d+)/);
+                    if (starText) {
+                        const s = starText[1];
+                        if (percentText) result[s].percentage = parseInt(percentText[1]);
+                        if (countText) result[s].count = parseInt(countText[1].replace(/,/g, ''));
+                    }
+                });
+            }
+            // FLIPKART
+            else if (url.includes('flipkart')) {
+                // New Flipkart structure often has bars with counts next to them
+                const rows = document.querySelectorAll('div._2En60Z, div._3EnG0X, div.pE679W');
+                if (rows.length >= 5) {
+                    rows.forEach((row, idx) => {
+                        const star = 5 - idx;
+                        const countEl = row.querySelector('.B6By9N, ._2X0S_Y, span:last-child');
+                        if (countEl) {
+                            const c = countEl.innerText.replace(/,/g, '').match(/\d+/);
+                            if (c) result[star].count = parseInt(c[0]);
+                        }
+                    });
+                    convertToPct(result);
+                }
+            }
+            // MYNTRA
+            else if (url.includes('myntra')) {
+                const bars = document.querySelectorAll('[class*="index-ratingBarContainer"]');
+                bars.forEach((bar, idx) => {
+                    const star = 5 - idx;
+                    const countEl = bar.querySelector('[class*="index-count"]');
+                    if (countEl) {
+                        const c = countEl.innerText.replace(/,/g, '').match(/\d+/);
+                        if (c) result[star].count = parseInt(c[0]);
+                    }
+                });
+                convertToPct(result);
+            }
+            // NYKAA
+            else if (url.includes('nykaa')) {
+                const rows = document.querySelectorAll('[class*="ProductRatings-Total"], [class*="RatingBar"]');
+                if (rows.length >= 5) {
+                    rows.forEach((row, idx) => {
+                        const star = 5 - idx;
+                        const countMatch = row.innerText.match(/\d+/);
+                        if (countMatch) result[star].count = parseInt(countMatch[0]);
+                    });
+                    convertToPct(result);
+                }
+            }
+
+            // Fallback for percentages if only bars found
+            const hasData = Object.values(result).some(v => v.count > 0 || v.percentage > 0);
+            if (!hasData) {
+                // Try scanning for "5★ 76%" style patterns
+                const bodyText = document.body.innerText;
+                [5,4,3,2,1].forEach(s => {
+                    const reg = new RegExp(s + '\\s*(?:★|\\*|star)s?\\s*(\\d+)(?:%|\\s*\\()', 'i');
+                    const m = bodyText.match(reg);
+                    if (m) result[s].percentage = parseInt(m[1]);
+                });
+            }
+
+            return result;
+        });
+
+        // STRATEGY 4: Use ld+json aggregate score to estimate distribution
+        const finalTotal = Object.values(ratings).reduce((a, b) => a + (b.percentage || 0), 0);
+        if (finalTotal === 0 && ldJsonRating) {
+            console.log(`[Ratings] Using ld+json aggregate: ${ldJsonRating.score}`);
+            const est = estimateDistribution(ldJsonRating.score);
+            const res = {};
+            [5,4,3,2,1].forEach(s => res[s] = { count: 0, percentage: est[s] });
+            return res;
+        }
+
+        // STRATEGY 5: Last resort — scan page text for ANY float rating like "4.2"
+        if (finalTotal === 0) {
+            const bodyText = await page.evaluate(() => document.body.innerText);
+            const patterns = [
+                /(\d\.\d)\s*\/\s*5/i,
+                /(\d\.\d)\s*out\s*of\s*5/i,
+                /rated?\s*[:\s]*(\d\.\d)/i,
+                /(\d\.\d)\s*★/,
+                /★\s*(\d\.\d)/,
+                /average[^0-9]*(\d\.\d)/i,
+                /(\d\.\d)\s*(?:stars?|★|\*)/i,
+            ];
+            for (const pat of patterns) {
+                const m = bodyText.match(pat);
+                if (m) {
+                    const v = parseFloat(m[1]);
+                    if (v >= 1 && v <= 5) {
+                        console.log(`[Ratings] Estimated from text score: ${v}`);
+                        const est = estimateDistribution(v);
+                        const res = {};
+                        [5,4,3,2,1].forEach(s => res[s] = { count: 0, percentage: est[s] });
+                        return res;
+                    }
+                }
+            }
+            
+            // STRATEGY 6: Guaranteed fallback using passed known rating from database
+            if (fallbackRating && parseFloat(fallbackRating) > 0) {
+                console.log(`[Ratings] Estimated from DB fallback rating: ${fallbackRating}`);
+                const est = estimateDistribution(parseFloat(fallbackRating));
+                const res = {};
+                [5,4,3,2,1].forEach(s => res[s] = { count: 0, percentage: est[s] });
+                return res;
+            }
+        }
+
+        console.log(`[Ratings] Final for ${productUrl.slice(0,60)}:`, JSON.stringify(ratings));
+        return ratings;
+
+    } catch (e) {
+        console.error("Rating Distribution Error:", e.message);
+        return { 5: {count:0, percentage:0}, 4: {count:0, percentage:0}, 3: {count:0, percentage:0}, 2: {count:0, percentage:0}, 1: {count:0, percentage:0} };
+    } finally {
+        if (browser) await browser.close();
+    }
+}
+
+function estimateDistribution(score) {
+    if (score >= 4.5) return { 5: 70, 4: 20, 3: 5,  2: 3,  1: 2  };
+    if (score >= 4.0) return { 5: 55, 4: 25, 3: 10, 2: 5,  1: 5  };
+    if (score >= 3.5) return { 5: 40, 4: 30, 3: 15, 2: 5,  1: 10 };
+    if (score >= 3.0) return { 5: 25, 4: 25, 3: 30, 2: 10, 1: 10 };
+    if (score >= 2.0) return { 5: 10, 4: 15, 3: 25, 2: 30, 1: 20 };
+    return             { 5: 5,  4: 5,  3: 10, 2: 30, 1: 50 };
+}
+
+module.exports = { scrapeReviews, scrapeRatingDistribution };

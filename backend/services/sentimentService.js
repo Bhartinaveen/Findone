@@ -2,8 +2,10 @@ const { GoogleGenerativeAI } = require("@google/generative-ai");
 require('dotenv').config();
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
-// Use gemini-1.5-flash as it is the current standard efficient model
-const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+// Use a sequence of models to handle availability issues
+const MODEL_CANDIDATES = ["gemini-1.5-flash", "gemini-1.5-flash-latest", "gemini-pro", "gemini-1.5-pro"];
+let currentModelIndex = 0;
+let model = genAI.getGenerativeModel({ model: MODEL_CANDIDATES[currentModelIndex] });
 
 async function analyzeReviews(reviewsText) {
     if (!reviewsText || reviewsText.length < 50) {
@@ -20,10 +22,13 @@ async function analyzeReviews(reviewsText) {
     Return a JSON object with:
     - positive: number (percentage 0-100)
     - negative: number (percentage 0-100)
-    - summary: string (Concise purchase advice. E.g., "Great for battery life, but camera is average. Buy if you prioritize performance over photos.")
-    - review_count: number (estimate count based on text provided)
+    - summary: string (Concise purchase advice, highlighting key pros and cons. E.g., "Excellent build quality and battery, but heavy and slow charging. Recommended for power users.")
+    - review_count: number (How many distinct reviews you can identify)
     
-    Ensure positive + negative = 100.
+    Rules:
+    1. positive + negative MUST = 100.
+    2. Be objective and critical. If reviews mention many issues, reflect it in the percentage.
+    3. The summary must be helpful and mention specific product attributes found in the text.
     
     Reviews Text:
     "${reviewsText.slice(0, 15000)}"
@@ -42,6 +47,13 @@ async function analyzeReviews(reviewsText) {
             return JSON.parse(jsonStr);
         } catch (error) {
             console.error(`Sentiment Analysis Attempt ${attempt} Failed:`, error.message);
+
+            // Fallback strategy: Switch to next candidate model if current one 404s or 503s repeatedly
+            if (error.message.includes('404') || error.message.includes('503') || error.message.includes('429')) {
+                currentModelIndex = (currentModelIndex + 1) % MODEL_CANDIDATES.length;
+                console.log(`Switching to backup model: ${MODEL_CANDIDATES[currentModelIndex]}`);
+                model = genAI.getGenerativeModel({ model: MODEL_CANDIDATES[currentModelIndex] });
+            }
 
             // If Rate Limit (429) or Service Overloaded (503), wait and retry
             if ((error.message.includes('429') || error.message.includes('503')) && attempt < 3) {
