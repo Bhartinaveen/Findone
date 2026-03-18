@@ -223,6 +223,10 @@ User → Clicks heart icon on product detail page
 
 ---
 
+## simple flowchart
+![alt text](<User-Centric Product-2026-03-18-011926.png>)
+
+
 ## ⚙️ Environment Variables
 
 ### Backend (`backend/.env`)
@@ -286,3 +290,30 @@ Open **http://localhost:5173** in your browser.
 ---
 
 <p align="center">Made with ❤️ by <a href="https://github.com/Bhartinaveen">Bharti Naveen</a></p>
+
+# How this project looks
+# login page
+![alt text](screencapture-localhost-5173-login-2026-03-18-18_52_41.png)
+# Register page
+![alt text](screencapture-localhost-5173-register-2026-03-18-18_53_37.png)
+# main page 
+![alt text](screencapture-localhost-5173-2026-03-18-18_30_18.png)
+# chatbot page and you can adjust the price range and rating according to your need by using up and down arrow keys
+![alt text](image-3.png)
+![alt text](image-4.png)
+# product detail page
+![alt text](screencapture-localhost-5173-product-1354-2026-03-18-18_38_08.png)
+# Blog details page
+![alt text](screencapture-localhost-5173-blog-2026-03-18-18_39_47.png)
+# About us page
+![alt text](screencapture-localhost-5173-about-2026-03-18-18_41_19.png)
+# privacy policy page
+![alt text](screencapture-localhost-5173-about-2026-03-18-18_41_19-1.png)
+# Terms and comdition 
+![alt text](screencapture-localhost-5173-about-2026-03-18-18_41_19-2.png)
+
+# My career page
+![alt text](screencapture-localhost-5173-about-2026-03-18-18_41_19-3.png)
+
+# Have a two mode dark mode and light mode
+![alt text](screencapture-localhost-5173-product-1397-2026-03-18-18_50_36.png)
