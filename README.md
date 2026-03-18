@@ -293,27 +293,31 @@ Open **http://localhost:5173** in your browser.
 
 # How this project looks
 # login page
-![alt text](screencapture-localhost-5173-login-2026-03-18-18_52_41.png)
+![alt text](screencapture-localhost-5173-login-2026-03-18-19_38_40.png)
 # Register page
-![alt text](screencapture-localhost-5173-register-2026-03-18-18_53_37.png)
+![alt text](screencapture-localhost-5173-register-2026-03-18-19_38_13.png)
 # main page 
-![alt text](screencapture-localhost-5173-2026-03-18-18_30_18.png)
+![alt text](screencapture-localhost-5173-2026-03-18-19_27_10.png)
 # chatbot page and you can adjust the price range and rating according to your need by using up and down arrow keys
-![alt text](image-3.png)
-![alt text](image-4.png)
+![alt text](image-5.png)
+![alt text](image-6.png)
 # product detail page
-![alt text](screencapture-localhost-5173-product-1354-2026-03-18-18_38_08.png)
+![alt text](screencapture-localhost-5173-product-1449-2026-03-18-19_31_59.png)
 # Blog details page
-![alt text](screencapture-localhost-5173-blog-2026-03-18-18_39_47.png)
+![alt text](screencapture-localhost-5173-blog-2026-03-18-19_32_53.png)
 # About us page
-![alt text](screencapture-localhost-5173-about-2026-03-18-18_41_19.png)
+![alt text](screencapture-localhost-5173-about-2026-03-18-19_33_39.png)
 # privacy policy page
-![alt text](screencapture-localhost-5173-about-2026-03-18-18_41_19-1.png)
+![alt text](screencapture-localhost-5173-privacy-2026-03-18-19_34_28.png)
 # Terms and comdition 
-![alt text](screencapture-localhost-5173-about-2026-03-18-18_41_19-2.png)
+![alt text](screencapture-localhost-5173-terms-2026-03-18-19_35_08.png)
 
 # My career page
-![alt text](screencapture-localhost-5173-about-2026-03-18-18_41_19-3.png)
+![alt text](screencapture-localhost-5173-careers-2026-03-18-19_35_46.png)
 
 # Have a two mode dark mode and light mode
+# Light mode
 ![alt text](screencapture-localhost-5173-product-1397-2026-03-18-18_50_36.png)
+# Dark mode
+![alt text](screencapture-localhost-5173-product-1470-2026-03-18-19_36_51.png)
+
