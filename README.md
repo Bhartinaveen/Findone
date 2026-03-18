@@ -224,7 +224,7 @@ User → Clicks heart icon on product detail page
 ---
 
 ## simple flowchart
-![alt text](<User-Centric Product-2026-03-18-011926.png>)
+![alt text](User-Centric%20Product-2026-03-18-011926.png)
 
 
 ## ⚙️ Environment Variables
