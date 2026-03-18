@@ -1,0 +1,36 @@
+# Dependency directories
+node_modules/
+dist/
+build/
+
+# Environment files
+.env
+.env.local
+.env.*.local
+
+# Debug files
+*.log
+nykaa_dump.html
+inspection_results.txt
+ratings_test_results.txt
+tmp_list_models.js
+clean_test_ratings.js
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Media/Screenshots
+*.png
+*.jpg
+*.jpeg
+*.gif
+*.svg
+!frontend/public/*.png
+!frontend/public/*.svg
