@@ -18,9 +18,9 @@ export const getProducts = async () => {
     }
 };
 
-export const sendChat = async (query) => {
+export const sendChat = async (query, mode = 'search', history = []) => {
     try {
-        const response = await api.post('/chat', { query });
+        const response = await api.post('/chat', { query, mode, history });
         return response.data;
     } catch (error) {
         console.error('Chat error:', error);

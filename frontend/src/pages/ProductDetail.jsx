@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { useParams, useNavigate } from 'react-router-dom';
 import { getProductDetails, getApiUrl } from '../api';
 import PriceChart from '../components/PriceChart';
@@ -22,6 +23,7 @@ export default function ProductDetail() {
     const [analyzing, setAnalyzing] = useState(false);
     const [ratings, setRatings] = useState(null);
     const [fetchingRatings, setFetchingRatings] = useState(false);
+    const [hasNoRatings, setHasNoRatings] = useState(false);
 
     const handleFetchRatings = async () => {
         if (!data || !data.product || !data.product.product_url) return;
@@ -38,10 +40,22 @@ export default function ProductDetail() {
             });
             const result = await res.json();
             if (result && result["5"] !== undefined) {
-                setRatings(result);
+                // Only accept if at least one star bucket has a non-zero percentage
+                const totalPct = [5,4,3,2,1].reduce((sum, s) => sum + (result[s]?.percentage || 0), 0);
+                if (totalPct > 0) {
+                    setRatings(result);
+                    setHasNoRatings(false);
+                } else {
+                    // All zeros → show "no customer ratings" msg
+                    setHasNoRatings(true);
+                    console.warn("Rating returned all zeros — indicating no customer ratings.");
+                }
+            } else {
+                setHasNoRatings(true);
             }
         } catch (e) {
             console.error("Rating distribution error:", e);
+            setHasNoRatings(true);
         } finally {
             setFetchingRatings(false);
         }
@@ -313,10 +327,10 @@ export default function ProductDetail() {
             </div>
 
             {/* Price Alert Modal */}
-            {showModal && (
-                <div style={{ position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', background: 'rgba(0,0,0,0.4)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 100 }}>
-                    <div style={{ background: 'var(--surface)', padding: '2rem', borderRadius: '1.5rem', width: '350px', boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)' }}>
-                        <h3 style={{ marginTop: 0 }}>Set Price Alert</h3>
+            {showModal && createPortal(
+                <div style={{ position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', background: 'rgba(0,0,0,0.6)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 999999 }}>
+                    <div style={{ background: 'var(--bg-elevated)', padding: '2rem', borderRadius: '1.5rem', width: '350px', boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5)', border: '1px solid var(--border)' }}>
+                        <h3 style={{ marginTop: 0, color: 'var(--text)' }}>Set Price Alert</h3>
                         <p style={{ color: 'var(--text-muted)', marginBottom: '1rem' }}>We'll notify you when the price drops.</p>
 
                         <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.9rem', color: 'var(--text)' }}>Target Price (₹)</label>
@@ -325,14 +339,13 @@ export default function ProductDetail() {
                             placeholder={`Current: ₹${product.price}`}
                             value={targetPrice}
                             onChange={(e) => setTargetPrice(e.target.value)}
-                            style={{ width: '100%', padding: '0.8rem', background: 'var(--background)', border: '1px solid var(--border)', color: 'var(--text)', borderRadius: '0.75rem', marginBottom: '1.5rem', fontSize: '1rem' }}
+                            style={{ width: '100%', padding: '0.8rem', background: 'var(--bg-input)', border: '1px solid var(--border)', color: 'var(--text)', borderRadius: '0.75rem', marginBottom: '1.5rem', fontSize: '1rem', outline: 'none' }}
                         />
 
                         <div style={{ display: 'flex', gap: '1rem' }}>
                             <button
                                 onClick={async () => {
                                     if (!user) { alert('Please login first'); navigate('/login'); return; }
-                                    // Optimistic update moved inside logic
                                     try {
                                         const res = await fetch(`${getApiUrl()}/wishlist/add`, {
                                             method: 'POST',
@@ -365,19 +378,21 @@ export default function ProductDetail() {
                                         setWishing(false);
                                     }
                                 }}
-                                style={{ flex: 1, background: '#10b981', color: 'white', border: 'none', padding: '0.8rem', borderRadius: '0.5rem', cursor: 'pointer', fontWeight: 'bold' }}
+                                className="btn-primary"
+                                style={{ flex: 1, padding: '0.8rem', justifyContent: 'center' }}
                             >
                                 Save Alert
                             </button>
                             <button
                                 onClick={() => setShowModal(false)}
-                                style={{ flex: 1, background: 'none', border: '1px solid var(--border)', color: 'var(--text)', padding: '0.8rem', borderRadius: '0.5rem', cursor: 'pointer' }}
+                                style={{ flex: 1, background: 'transparent', border: '1px solid var(--border)', color: 'var(--text)', padding: '0.8rem', borderRadius: '0.65rem', cursor: 'pointer', fontWeight: 600, transition: 'all 0.2s' }}
                             >
                                 Cancel
                             </button>
                         </div>
                     </div>
-                </div>
+                </div>,
+                document.body
             )}
 
 
@@ -409,7 +424,7 @@ export default function ProductDetail() {
                         {fetchingRatings && <div className="spin-small" style={{ width: '14px', height: '14px' }}></div>}
                     </div>
                     
-                    {!ratings && !fetchingRatings && (
+                    {!ratings && !fetchingRatings && !hasNoRatings && (
                         <div style={{ marginBottom: '2rem' }}>
                             <button 
                                 onClick={handleFetchRatings}
@@ -433,37 +448,46 @@ export default function ProductDetail() {
                     )}
                     {/* Rating Distribution Graph */}
                     <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
-                        <div style={{ marginBottom: '1.5rem' }}>
-                            <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem', margin: 0 }}>Percentage of customer ratings across segments</p>
-                        </div>
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', justifyContent: 'center', flex: 1 }}>
-                            {[5, 4, 3, 2, 1].map(star => {
-                                const data = ratings ? (ratings[star] || { count: 0, percentage: 0 }) : { count: 0, percentage: 0 };
-                                const percent = data.percentage || 0;
-                                const count = data.count || 0;
-                                return (
-                                    <div key={star} style={{ display: 'flex', alignItems: 'center', gap: '1.5rem' }}>
-                                        <div style={{ width: '50px', fontSize: '0.9rem', color: 'var(--text)', display: 'flex', alignItems: 'center', gap: '6px', fontWeight: 600 }}>
-                                            {star} <Star size={12} fill="#fbbf24" color="#fbbf24" strokeWidth={0} />
-                                        </div>
-                                        <div style={{ flex: 1, height: '10px', background: 'rgba(128, 128, 128, 0.2)', borderRadius: '5px', overflow: 'hidden' }}>
-                                            <div style={{ 
-                                                width: `${percent}%`, 
-                                                height: '100%', 
-                                                background: star >= 4 ? 'linear-gradient(90deg, #10b981, #34d399)' : star === 3 ? '#fbbf24' : '#f43f5e',
-                                                borderRadius: '5px',
-                                                transition: 'width 1s cubic-bezier(0.4, 0, 0.2, 1)'
-                                            }}></div>
-                                        </div>
-                                        <div style={{ width: '100px', fontSize: '0.85rem', color: 'var(--text)', fontWeight: 600, textAlign: 'right', display: 'flex', justifyContent: 'flex-end', gap: '0.5rem' }}>
-                                            <span style={{ fontWeight: 800 }}>{percent}%</span>
-                                            {count > 0 && <span style={{ color: 'var(--text-muted)', fontSize: '0.75rem' }}>({count})</span>}
-                                        </div>
-                                    </div>
-                                );
-                            })}
-                        </div>
-                        {(!ratings && !fetchingRatings) && (
+                        {hasNoRatings ? (
+                            <div style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-muted)' }}>
+                                <div style={{ fontSize: '2rem', marginBottom: '1rem' }}>⭐</div>
+                                <p style={{ fontSize: '1.1rem', fontWeight: 600 }}>This product has no customer ratings</p>
+                            </div>
+                        ) : (
+                            <>
+                                <div style={{ marginBottom: '1.5rem' }}>
+                                    <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem', margin: 0 }}>Percentage of customer ratings across segments</p>
+                                </div>
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', justifyContent: 'center', flex: 1 }}>
+                                    {[5, 4, 3, 2, 1].map(star => {
+                                        const data = ratings ? (ratings[star] || { count: 0, percentage: 0 }) : { count: 0, percentage: 0 };
+                                        const percent = data.percentage || 0;
+                                        const count = data.count || 0;
+                                        return (
+                                            <div key={star} style={{ display: 'flex', alignItems: 'center', gap: '1.5rem' }}>
+                                                <div style={{ width: '50px', fontSize: '0.9rem', color: 'var(--text)', display: 'flex', alignItems: 'center', gap: '6px', fontWeight: 600 }}>
+                                                    {star} <Star size={12} fill="#fbbf24" color="#fbbf24" strokeWidth={0} />
+                                                </div>
+                                                <div style={{ flex: 1, height: '10px', background: 'rgba(128, 128, 128, 0.2)', borderRadius: '5px', overflow: 'hidden' }}>
+                                                    <div style={{ 
+                                                        width: `${percent}%`, 
+                                                        height: '100%', 
+                                                        background: star >= 4 ? 'linear-gradient(90deg, #10b981, #34d399)' : star === 3 ? '#fbbf24' : '#f43f5e',
+                                                        borderRadius: '5px',
+                                                        transition: 'width 1s cubic-bezier(0.4, 0, 0.2, 1)'
+                                                    }}></div>
+                                                </div>
+                                                <div style={{ width: '100px', fontSize: '0.85rem', color: 'var(--text)', fontWeight: 600, textAlign: 'right', display: 'flex', justifyContent: 'flex-end', gap: '0.5rem' }}>
+                                                    <span style={{ fontWeight: 800 }}>{percent}%</span>
+                                                    {count > 0 && <span style={{ color: 'var(--text-muted)', fontSize: '0.75rem' }}>({count})</span>}
+                                                </div>
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+                            </>
+                        )}
+                        {(!ratings && !fetchingRatings && !hasNoRatings) && (
                             <div style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-muted)' }}>
                                 <div style={{ fontSize: '2rem', marginBottom: '1rem' }}>📊</div>
                                 <p>Rating data temporarily unavailable for this source.</p>

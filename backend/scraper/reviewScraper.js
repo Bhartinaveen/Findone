@@ -133,6 +133,43 @@ async function scrapeReviews(productUrl) {
 }
 
 async function scrapeRatingDistribution(productUrl, fallbackRating = null) {
+    // ── URL SANITISATION ──────────────────────────────────────────────────────
+    // The scraper sometimes stores concatenated URLs like:
+    //   "https://ajio.com/product/p/123?ment-Lightweight/dp/B0.../ref=sr_1_10"
+    // (an Ajio URL with an Amazon path appended in the query string).
+    // Clean this before ever launching a browser.
+    let cleanUrl = productUrl;
+    try {
+        const parsed = new URL(productUrl);
+        const host = parsed.hostname;
+        const search = parsed.search || '';
+        // Ajio product pages need no query parameters — strip them all
+        if (host.includes('ajio.com')) {
+            cleanUrl = `${parsed.origin}${parsed.pathname}`;
+        }
+        // If query string embeds another site's path (concatenation artefact), strip it
+        else if (search && (
+            search.includes('/dp/') ||          // Amazon product path
+            search.includes('/p/') ||           // Flipkart/Ajio pattern
+            search.match(/amazon|flipkart|myntra|meesho|nykaa/i)
+        )) {
+            cleanUrl = `${parsed.origin}${parsed.pathname}`;
+        }
+        if (cleanUrl !== productUrl) {
+            console.log(`[Ratings] URL sanitised → ${cleanUrl}`);
+        }
+    } catch (e) {
+        // Completely un-parseable URL — skip browser, use fallback immediately
+        console.warn(`[Ratings] Invalid URL supplied, using fallback rating. URL: ${String(productUrl).slice(0, 80)}`);
+        if (fallbackRating && parseFloat(fallbackRating) > 0) {
+            const est = estimateDistribution(parseFloat(fallbackRating));
+            const fb = {};
+            [5,4,3,2,1].forEach(s => fb[s] = { count: 0, percentage: est[s] });
+            return fb;
+        }
+        return { 5:{count:0,percentage:0}, 4:{count:0,percentage:0}, 3:{count:0,percentage:0}, 2:{count:0,percentage:0}, 1:{count:0,percentage:0} };
+    }
+    // ─────────────────────────────────────────────────────────────────────────
     let browser = null;
     try {
         browser = await puppeteer.launch({
@@ -154,10 +191,6 @@ async function scrapeRatingDistribution(productUrl, fallbackRating = null) {
             'Accept-Language': 'en-US,en;q=0.9',
             'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8',
             'Upgrade-Insecure-Requests': '1',
-            'Sec-Fetch-Dest': 'document',
-            'Sec-Fetch-Mode': 'navigate',
-            'Sec-Fetch-Site': 'none',
-            'Sec-Fetch-User': '?1',
             'Cache-Control': 'max-age=0'
         });
 
@@ -186,22 +219,31 @@ async function scrapeRatingDistribution(productUrl, fallbackRating = null) {
             } catch(e) {}
         });
 
-        console.log(`[Ratings] Fetching: ${productUrl}`);
-        await page.goto(productUrl, { waitUntil: 'domcontentloaded', timeout: 45000 });
+        console.log(`[Ratings] Fetching: ${cleanUrl}`);
+        // Small random delay to avoid bot patterns
+        await new Promise(r => setTimeout(r, Math.random() * 2000 + 500));
+        await page.goto(cleanUrl, { 
+            waitUntil: cleanUrl.includes('ajio') ? 'networkidle2' : 'domcontentloaded', 
+            timeout: 60000 
+        });
+
+        // No hardcoded wait anymore - we will use waitForSelector which is dynamic
 
         // Wait specifically for rating-related elements to appear on the page
         const siteSelectors = {
             amazon: '.a-histogram-row',
             flipkart: '._2En60Z, ._3EnG0X, ._27M-N_',
             myntra: '[class*="index-ratingBarContainer"]',
-            ajio: '[class*="RatingBar"], [class*="ratingBar"], .rating-bar',
+            ajio: '[aria-label*="star rating"], [class*="RatingBar"], [class*="ratingBar"], .rating-bar',
             nykaa: '[class*="ratingCount"], [class*="RatingBar"], [class*="ProductRatings-Total"]',
             meesho: '[class*="RatingBar"], [class*="ProgressBar"]',
         };
-        const domain = Object.keys(siteSelectors).find(d => productUrl.includes(d));
+        const domain = Object.keys(siteSelectors).find(d => cleanUrl.includes(d));
         if (domain) {
             try {
-                await page.waitForSelector(siteSelectors[domain], { timeout: 6000 });
+                // Wait up to 10s for Ajio, 6s for others, but return INSTANTLY if found
+                const timeout = domain === 'ajio' ? 10000 : 6000;
+                await page.waitForSelector(siteSelectors[domain], { timeout });
                 console.log(`[Ratings] Found rating selector for ${domain}`);
             } catch(e) {
                 console.log(`[Ratings] Selector wait timed out for ${domain}, continuing...`);
@@ -209,18 +251,22 @@ async function scrapeRatingDistribution(productUrl, fallbackRating = null) {
         }
 
         // Scroll down slowly to trigger lazy-loaded rating sections
-        await page.evaluate(async () => {
-            const maxScroll = Math.min(document.body.scrollHeight, 8000);
+        // Optimization: Stop if selector is found after a scroll
+        await page.evaluate(async (selector) => {
             let current = 0;
-            while (current < maxScroll) {
-                window.scrollBy(0, 600);
-                current += 600;
+            while (current < 8000) {
+                // Check if data is already visible
+                if (selector && document.querySelector(selector)) break;
+                
+                window.scrollBy(0, 1000);
+                current += 1000;
                 await new Promise(r => setTimeout(r, 200));
+                if (current > 3000 && current >= document.body.scrollHeight) break;
             }
-        });
+        }, siteSelectors[domain] || null);
 
-        // Give JS frameworks extra time to render after scrolling
-        await new Promise(r => setTimeout(r, 2500));
+        // Reduced wait after scrolling
+        await new Promise(r => setTimeout(r, 1000));
 
         // STRATEGY 1: Use intercepted API response (most reliable for SPAs)
         if (interceptedRating) {
@@ -332,6 +378,57 @@ async function scrapeRatingDistribution(productUrl, fallbackRating = null) {
                         if (countMatch) result[star].count = parseInt(countMatch[0]);
                     });
                     convertToPct(result);
+                }
+            }
+            // AJIO
+            else if (url.includes('ajio')) {
+                // Method 1: ARIA labels (most reliable if rendered)
+                let listItems = document.querySelectorAll('li[aria-labelledby^="ratings"]');
+                if (listItems.length === 0) {
+                   listItems = Array.from(document.querySelectorAll('li')).filter(li => 
+                       li.querySelector('[aria-label*="star ratings"]')
+                   );
+                }
+
+                listItems.forEach(li => {
+                    const starEl = li.querySelector('[aria-label$="star ratings"]');
+                    const pctEl = li.querySelector('[id^="ratingspercentage"], span:last-child');
+                    if (starEl && pctEl) {
+                        const starMatch = starEl.getAttribute('aria-label').match(/(\d)/);
+                        const pctMatch = pctEl.innerText.match(/(\d+)%/);
+                        if (starMatch && pctMatch) {
+                            const star = parseInt(starMatch[1], 10);
+                            result[star].percentage = parseInt(pctMatch[1], 10);
+                        }
+                    }
+                });
+
+                // Method 2: Text-based fallback (if labels missing but text exists)
+                if (Object.values(result).every(v => v.percentage === 0)) {
+                    // Look for divs/spans that might contain star counts and percentages
+                    document.querySelectorAll('div, li, span').forEach(el => {
+                        if (el.children.length > 5) return; // avoid large containers
+                        const txt = el.innerText;
+                        const starMatch = txt.match(/^([1-5])\s*(?:★|star|[*])/i) || txt.match(/([1-5])\s*<img/i);
+                        const pctMatch = txt.match(/(\d+)%/);
+                        if (starMatch && pctMatch) {
+                            result[starMatch[1]].percentage = parseInt(pctMatch[1], 10);
+                        }
+                    });
+                }
+                
+                const countEl = document.querySelector('[aria-label*="star rating by"], ._3AxgC');
+                if (countEl) {
+                    const txt = countEl.getAttribute('aria-label') || countEl.innerText;
+                    const countMatch = txt.match(/(?:by\s+)?([\d,]+)\s+Customer/i);
+                    if (countMatch) {
+                        const totalCount = parseInt(countMatch[1].replace(/,/g, ''), 10);
+                        [5,4,3,2,1].forEach(s => {
+                            if (result[s].percentage > 0 && totalCount > 0) {
+                                result[s].count = Math.round((result[s].percentage / 100) * totalCount);
+                            }
+                        });
+                    }
                 }
             }
 

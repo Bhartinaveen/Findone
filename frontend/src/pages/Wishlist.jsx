@@ -53,34 +53,36 @@ export default function Wishlist() {
                 items.length === 0 ? <p style={{ color: 'var(--text-muted)' }}>Your wishlist is empty.</p> : (
                     <div className="product-grid">
                         {items.map(({ id, product, desired_max_price }) => (
-                            <div key={id} className="product-card" style={{ position: 'relative' }}>
-                                <button
-                                    onClick={() => removeFromWishlist(id)}
-                                    style={{ position: 'absolute', top: 5, right: 5, background: 'rgba(0,0,0,0.5)', color: '#f87171', border: 'none', padding: '5px', borderRadius: '50%', cursor: 'pointer' }}
-                                >
-                                    <Trash2 size={16} />
-                                </button>
-                                <img
-                                    src={product.image_url || 'https://placehold.co/300?text=No+Image'}
-                                    alt={product.title}
-                                    className="product-image"
-                                />
-                                <div className="product-info">
-                                    <h3 className="product-title">{product.title}</h3>
-                                    <div className="product-meta">
-                                        <div className="product-price">₹{product.price}</div>
-                                        {desired_max_price && (
-                                            <div style={{ fontSize: '0.8rem', color: '#fbbf24' }}>
-                                                Alert below: ₹{desired_max_price}
-                                            </div>
-                                        )}
-                                    </div>
+                            <div key={id} className="product-card" style={{ cursor: 'pointer' }}>
+                                <div className="product-card-front" style={{ position: 'relative', height: '100%', flexDirection: 'column', display: 'flex' }}>
                                     <button
-                                        onClick={() => window.location.href = `/product/${product.id}`}
-                                        style={{ width: '100%', marginTop: '0.5rem', padding: '0.5rem', background: 'var(--primary)', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer' }}
+                                        onClick={(e) => { e.stopPropagation(); removeFromWishlist(id); }}
+                                        style={{ position: 'absolute', top: 12, right: 12, background: 'rgba(255,255,255,0.9)', color: '#f43f5e', border: 'none', padding: '8px', borderRadius: '50%', cursor: 'pointer', zIndex: 10, boxShadow: '0 4px 12px rgba(0,0,0,0.15)', transition: 'all 0.2s' }}
+                                        onMouseEnter={(e) => { e.currentTarget.style.transform = 'scale(1.1)'; e.currentTarget.style.background = '#ffe4e6'; }}
+                                        onMouseLeave={(e) => { e.currentTarget.style.transform = 'scale(1)'; e.currentTarget.style.background = 'rgba(255,255,255,0.9)'; }}
+                                        title="Remove from Wishlist"
                                     >
-                                        View
+                                        <Trash2 size={16} />
                                     </button>
+                                    <div className="product-image-wrap" onClick={() => navigate(`/product/${product.id}`)}>
+                                        <img
+                                            src={product.image_url || 'https://placehold.co/300/f8faff/111827?text=?'}
+                                            alt={product.title}
+                                            className="product-image"
+                                            onError={(e) => { e.target.onerror = null; e.target.src = 'https://placehold.co/300/f8faff/111827?text=?'; }}
+                                        />
+                                    </div>
+                                    <div className="product-info-minimal" onClick={() => navigate(`/product/${product.id}`)} style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
+                                        <h3 style={{ fontSize: '1.05rem', fontWeight: 700, margin: '0 0 0.5rem 0', color: 'var(--text)', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{product.title}</h3>
+                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                            <span style={{ fontSize: '1.3rem', fontWeight: 900, color: 'var(--primary)' }}>₹{product.price}</span>
+                                            {desired_max_price && (
+                                                <span style={{ fontSize: '0.75rem', color: '#f59e0b', fontWeight: 700, border: '1px solid rgba(245, 158, 11, 0.2)', padding: '0.2rem 0.6rem', background: 'rgba(245, 158, 11, 0.1)', borderRadius: '1rem' }}>
+                                                    Below ₹{desired_max_price}
+                                                </span>
+                                            )}
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
                         ))}

@@ -1,2 +1,27 @@
+# ─── Secrets (NEVER commit) ──────────────────────────────────────────
 .env
-node_modules
+.env.*
+
+# ─── Dependencies ────────────────────────────────────────────────────
+node_modules/
+
+# ─── Test / Debug Scripts (local-only utilities) ─────────────────────
+testGeminiSearch.js
+tmp_list_models.js
+clean_test_ratings.js
+
+# ─── Scraper Debug Dumps ──────────────────────────────────────────────
+nykaa_dump.html
+inspection_results.txt
+ratings_test_results.txt
+*.html.dump
+
+# ─── Logs ────────────────────────────────────────────────────────────
+*.log
+logs/
+
+# ─── OS / IDE ─────────────────────────────────────────────────────────
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/

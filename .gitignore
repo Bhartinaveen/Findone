@@ -1,32 +1,62 @@
-# Dependency directories
+# ─── Dependencies ────────────────────────────────────────────────────
 node_modules/
-dist/
-build/
 
-# Environment files
+# ─── Build Outputs ────────────────────────────────────────────────────
+dist/
+dist-ssr/
+build/
+.output/
+
+# ─── Environment / Secrets (NEVER commit these) ───────────────────────
 .env
 .env.local
 .env.*.local
+.env.development
+.env.production
+.env.staging
+backend/.env
+frontend/.env
 
-# Debug files
-*.log
-nykaa_dump.html
-inspection_results.txt
-ratings_test_results.txt
+# ─── Test & Debug Scripts (local-only dev utilities) ──────────────────
+backend/testGeminiSearch.js
 tmp_list_models.js
 clean_test_ratings.js
 
-# IDE files
+# ─── Scraper Debug Dumps ──────────────────────────────────────────────
+nykaa_dump.html
+inspection_results.txt
+ratings_test_results.txt
+
+# ─── Log Files ────────────────────────────────────────────────────────
+*.log
+logs/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+# ─── IDE / Editor ─────────────────────────────────────────────────────
 .vscode/
 .idea/
 *.swp
 *.swo
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
 
-# OS files
+# ─── OS Files ─────────────────────────────────────────────────────────
 .DS_Store
 Thumbs.db
+desktop.ini
 
-# Media/Screenshots
-# (Removed broad ignore to allow README screenshots)
-!frontend/public/*.png
-!frontend/public/*.svg
+# ─── Package manager lock files (optional — keep if you want reproducible installs) ──
+# package-lock.json
+# yarn.lock
+
+# ─── Misc ─────────────────────────────────────────────────────────────
+*.local
+.cache/
+.temp/
+tmp/

@@ -1,17 +1,27 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { MessageCircle, X, Send, ShoppingBag, RotateCcw } from 'lucide-react';
+import { MessageCircle, X, Send, ShoppingBag, RotateCcw, Maximize2, Minimize2 } from 'lucide-react';
 import { sendChat } from '../api';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 
 export default function ChatWidget({ onRecommend }) {
     const [isOpen, setIsOpen] = useState(false);
+    const [isExpanded, setIsExpanded] = useState(false);
+    const [mode, setMode] = useState('search');
+
+    const initialMsgSearch = [{ role: 'bot', content: 'Hi! I can help you find products. What are you looking for?' }];
+    const initialMsgCompare = [{ role: 'bot', content: 'Hi! I can help you compare products. What would you like to compare?' }];
 
     // Initialize from LocalStorage if available
-    const [messages, setMessages] = useState(() => {
-        const saved = localStorage.getItem('chat_messages');
-        return saved ? JSON.parse(saved) : [
-            { role: 'bot', content: 'Hi! I can help you find products. What are you looking for?' }
-        ];
+    const [allMessages, setAllMessages] = useState(() => {
+        const saved = localStorage.getItem('chat_messages_v2');
+        return saved ? JSON.parse(saved) : {
+            search: initialMsgSearch,
+            compare: initialMsgCompare
+        };
     });
+
+    const messages = allMessages[mode] || [];
 
     const [input, setInput] = useState('');
     const [loading, setLoading] = useState(false);
@@ -25,14 +35,18 @@ export default function ChatWidget({ onRecommend }) {
 
     // Persist to LocalStorage whenever messages change
     useEffect(() => {
-        localStorage.setItem('chat_messages', JSON.stringify(messages));
-    }, [messages]);
+        localStorage.setItem('chat_messages_v2', JSON.stringify(allMessages));
+    }, [allMessages]);
 
     const handleSend = async () => {
         if (!input.trim()) return;
 
+        const currentHistory = allMessages[mode];
         const userMsg = { role: 'user', content: input };
-        setMessages(prev => [...prev, userMsg]);
+        setAllMessages(prev => ({
+            ...prev,
+            [mode]: [...prev[mode], userMsg]
+        }));
         setInput('');
         setLoading(true);
 
@@ -40,17 +54,26 @@ export default function ChatWidget({ onRecommend }) {
         window.dispatchEvent(new CustomEvent('chat-scrape-start'));
 
         try {
-            const { answer, products } = await sendChat(input);
-            setMessages(prev => [...prev, { role: 'bot', content: answer }]);
+            const { answer, products } = await sendChat(input, mode, currentHistory);
+            setAllMessages(prev => ({
+                ...prev,
+                [mode]: [...prev[mode], { role: 'bot', content: answer }]
+            }));
 
             if (products && products.length > 0) {
-                setMessages(prev => [...prev, { role: 'bot-products', content: products }]);
+                setAllMessages(prev => ({
+                    ...prev,
+                    [mode]: [...prev[mode], { role: 'bot-products', content: products }]
+                }));
                 // Notify Home page to update
                 window.dispatchEvent(new CustomEvent('product-update', { detail: products }));
             }
         } catch (error) {
             console.error("Chat error:", error);
-            setMessages(prev => [...prev, { role: 'bot', content: "Sorry, I encountered an error. Please try again." }]);
+            setAllMessages(prev => ({
+                ...prev,
+                [mode]: [...prev[mode], { role: 'bot', content: "Sorry, I encountered an error. Please try again." }]
+            }));
         } finally {
             setLoading(false);
             window.dispatchEvent(new CustomEvent('chat-scrape-end'));
@@ -63,10 +86,11 @@ export default function ChatWidget({ onRecommend }) {
 
     const resetChat = (e) => {
         e.stopPropagation();
-        const initialMsg = [{ role: 'bot', content: 'Hi! I can help you find products. What are you looking for?' }];
-        setMessages(initialMsg);
+        setAllMessages(prev => ({
+            ...prev,
+            [mode]: mode === 'search' ? initialMsgSearch : initialMsgCompare
+        }));
         setInput('');
-        localStorage.setItem('chat_messages', JSON.stringify(initialMsg));
     };
 
     return (
@@ -79,21 +103,53 @@ export default function ChatWidget({ onRecommend }) {
             </button>
 
             {isOpen && (
-                <div className="chat-widget">
-                    <div className="chat-header" style={{ justifyContent: 'space-between' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
-                            <div className="chat-header-dot"></div>
-                            <MessageCircle size={18} />
-                            FindNow Assistant
+                <div className="chat-widget" style={isExpanded ? {
+                    width: '800px',
+                    maxWidth: '95vw',
+                    height: '80vh',
+                    maxHeight: '900px',
+                    right: '50%',
+                    bottom: '2rem',
+                    transform: 'translateX(50%)'
+                } : {}}>
+                    <div className="chat-header" style={{ justifyContent: 'space-between', flexDirection: 'column', alignItems: 'stretch' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
+                                <div className="chat-header-dot"></div>
+                                <MessageCircle size={18} />
+                                FindNow Assistant
+                            </div>
+                        <div style={{ display: 'flex', gap: '0.5rem' }}>
+                            <button
+                                onClick={() => setIsExpanded(!isExpanded)}
+                                style={{ background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.15)', color: 'rgba(255,255,255,0.8)', cursor: 'pointer', display: 'flex', alignItems: 'center', borderRadius: '0.4rem', padding: '0.25rem 0.6rem', gap: '4px', fontSize: '0.78rem', transition: 'all 0.2s' }}
+                                title={isExpanded ? "Minimize" : "Expand"}
+                            >
+                                {isExpanded ? <Minimize2 size={13} /> : <Maximize2 size={13} />}
+                                {isExpanded ? 'Minimize' : 'Expand'}
+                            </button>
+                            <button
+                                onClick={resetChat}
+                                style={{ background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.15)', color: 'rgba(255,255,255,0.8)', cursor: 'pointer', display: 'flex', alignItems: 'center', borderRadius: '0.4rem', padding: '0.25rem 0.6rem', gap: '4px', fontSize: '0.78rem', transition: 'all 0.2s' }}
+                                title="Start New Chat"
+                            >
+                                <RotateCcw size={13} />
+                                New Chat
+                            </button>
                         </div>
-                        <button
-                            onClick={resetChat}
-                            style={{ background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.15)', color: 'rgba(255,255,255,0.8)', cursor: 'pointer', display: 'flex', alignItems: 'center', borderRadius: '0.4rem', padding: '0.25rem 0.6rem', gap: '4px', fontSize: '0.78rem', transition: 'all 0.2s' }}
-                            title="Start New Chat"
-                        >
-                            <RotateCcw size={13} />
-                            New Chat
-                        </button>
+                        </div>
+                        <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.8rem', background: 'rgba(0,0,0,0.2)', padding: '4px', borderRadius: '0.5rem' }}>
+                            <button 
+                                onClick={() => setMode('search')}
+                                style={{ flex: 1, padding: '6px', borderRadius: '0.4rem', border: 'none', background: mode === 'search' ? '#6366f1' : 'transparent', color: mode === 'search' ? 'white' : 'rgba(255,255,255,0.6)', cursor: 'pointer', fontSize: '0.8rem', fontWeight: mode === 'search' ? 'bold' : 'normal', transition: 'all 0.2s' }}>
+                                Search Mode
+                            </button>
+                            <button 
+                                onClick={() => setMode('compare')}
+                                style={{ flex: 1, padding: '6px', borderRadius: '0.4rem', border: 'none', background: mode === 'compare' ? '#10b981' : 'transparent', color: mode === 'compare' ? 'white' : 'rgba(255,255,255,0.6)', cursor: 'pointer', fontSize: '0.8rem', fontWeight: mode === 'compare' ? 'bold' : 'normal', transition: 'all 0.2s' }}>
+                                Compare Mode
+                            </button>
+                        </div>
                     </div>
 
                     <div className="chat-messages">
@@ -101,6 +157,18 @@ export default function ChatWidget({ onRecommend }) {
                             <div key={idx} className={msg.role === 'bot-products' ? 'product-matches' : `message ${msg.role}`}>
                                 {msg.role === 'bot-products' ? (
                                     <ChatProductList products={msg.content} />
+                                ) : msg.role === 'bot' ? (
+                                    <ReactMarkdown 
+                                      remarkPlugins={[remarkGfm]}
+                                      components={{
+                                        table: ({node, ...props}) => <table style={{ borderCollapse: 'collapse', width: '100%', margin: '10px 0', fontSize: '0.85rem' }} {...props} />,
+                                        th: ({node, ...props}) => <th style={{ border: '1px solid rgba(255,255,255,0.2)', padding: '6px', backgroundColor: 'rgba(255,255,255,0.1)' }} {...props} />,
+                                        td: ({node, ...props}) => <td style={{ border: '1px solid rgba(255,255,255,0.1)', padding: '6px' }} {...props} />,
+                                        p: ({node, ...props}) => <p style={{ margin: '0 0 8px 0' }} {...props} />
+                                      }}
+                                    >
+                                      {msg.content}
+                                    </ReactMarkdown>
                                 ) : (
                                     msg.content
                                 )}

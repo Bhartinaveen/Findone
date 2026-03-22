@@ -25,7 +25,8 @@ The core idea is to eliminate the time wasted browsing multiple sites. FindNow s
 | 🔍 **Multi-site Scraping** | Scrapes product listings from Amazon, Flipkart, Myntra, Ajio, Meesho, and Nykaa in real time using headless Chromium |
 | 📊 **Price History Charts** | Tracks and visualizes product price over time with interactive area charts |
 | 🏷️ **Live Offers Feed** | Continuously polls all 6 platforms for active deals and discount offers in the background |
-| 🤖 **AI Chatbot (RAG)** | An embedded chatbot powered by Google Gemini that understands your product database and answers shopping questions using Retrieval-Augmented Generation |
+| 🤖 **AI Chatbot — Search Mode (RAG)** | An embedded chatbot powered by Google Gemini that understands your product database and answers shopping questions using Retrieval-Augmented Generation |
+| ⚖️ **AI Chatbot — Comparison Mode** | A dedicated **Compare Mode** inside the chatbot that lets you type any two products (e.g., "iPhone 15 vs Samsung S24") and get an AI-generated side-by-side comparison of specs, price, and value — powered by Google Gemini with live Google Search grounding for up-to-date data |
 | ⭐ **Customer Rating Distribution** | Scrapes rating breakdowns (1★–5★) from product pages with multi-strategy fallback |
 | 💡 **Price Intelligence Gauge** | Compares the current price against historical min/max and average; shows AVG marker and date bubble on a color-coded bar |
 | 🔔 **Wishlist & Price Alerts** | Users can add products to a wishlist with a target price; the backend periodically checks and notifies them when the price drops |
@@ -180,19 +181,46 @@ User → Clicks "Fetch Real-Time Ratings" on product page
      → Frontend renders animated progress bars
 ```
 
-### 6. AI Chatbot Flow (RAG)
+### 6. AI Chatbot Flow (RAG — Search Mode & Compare Mode)
+
+The chatbot has **two distinct modes** switchable from tabs inside the widget:
+
+#### 6a. Search Mode (default)
 ```
-User → Types a message in the ChatWidget
-     → Frontend calls POST /api/chat { message }
+User → Switches to "Search Mode" tab in ChatWidget
+     → Types a product query (e.g. "best running shoes under 3000")
+     → Frontend calls POST /api/chat { query, mode: 'search', history }
      → ragService.js:
-         1. Converts user message to vector embedding (embeddingService)
+         1. Converts user message to a vector embedding (embeddingService → Gemini text-embedding-004)
          2. Queries Supabase for the most semantically similar products
-            (vector similarity search using pgvector)
-         3. Builds a context prompt with matched products
-         4. Sends prompt + context to Gemini API (gemini-2.5-flash)
-         5. Gemini generates a shopping advice response
-         6. Falls back to next model (gemini-2.5-pro) on 404/503 errors
-     → Frontend displays AI response in chat bubble
+            (pgvector similarity search with threshold 0.5, top 5 results)
+         3. If fewer than 3 results found → triggers a LIVE SCRAPE automatically
+            (scraper/index.js → saves to DB → returns fresh products)
+         4. Builds a context prompt with matched/scraped products
+         5. Sends prompt + context to Gemini API (gemini-2.5-flash)
+         6. Gemini generates a friendly product recommendation response
+         7. Falls back to gemini-2.5-pro on 404/503/429 errors with retry
+     → Frontend displays AI response in chat bubble (rendered as Markdown)
+     → Product cards also render inline with sort-by-price / sort-by-rating controls
+```
+
+#### 6b. Compare Mode (NEW ✨)
+```
+User → Switches to "Compare Mode" tab in ChatWidget
+     → Types a comparison query (e.g. "iPhone 15 vs Samsung S24")
+     → Frontend calls POST /api/chat { query, mode: 'compare', history }
+     → ragService.js:
+         1. Skips database/embedding search (uses live Google Search instead)
+         2. Attaches { googleSearch: {} } tool to the Gemini model call
+            → Gemini grounds its response in real-time Google Search results
+         3. Sends a structured comparison prompt to gemini-2.5-flash:
+              a. Comparison: specs, features, price, real-world value
+              b. Counter Questions: asks 1–2 follow-up questions to refine advice
+              c. Final Suggestion: definitive buy/skip recommendation
+         4. ALWAYS uses Indian Rupees (₹/INR); never USD
+         5. Falls back to gemini-2.5-pro on API errors with retry
+     → Frontend renders the Markdown response with table formatting
+     → Chat history is maintained across turns for context-aware follow-ups
 ```
 
 ### 7. Live Offers Feed Flow
@@ -220,6 +248,72 @@ User → Clicks heart icon on product detail page
      → User checks Wishlist page → GET /api/notifications
      → Frontend shows price drop alerts
 ```
+
+---
+
+## 🚀 How to Use the Project After Running
+
+Once both servers are running (`node server.js` in `/backend` and `npm run dev` in `/frontend`), open **http://localhost:5173** and follow this guide:
+
+### Step 1 — Register / Log In
+- Go to **Register** (top-right) → enter your email and password → click **Register**.
+- Or click **Login** if you already have an account.
+- After login, your name appears in the navbar and all personalised features (wishlist, alerts) are unlocked.
+
+### Step 2 — Search for Products
+- On the **Home** page, type a product name in the search bar (e.g., `laptop` or `Nike shoes`).
+- Click **Scrape New Data** to trigger a live scrape across Amazon, Flipkart, Myntra, Ajio, Meesho, and Nykaa.
+- Products load into the grid within seconds.
+
+### Step 3 — Filter & Sort Results
+- Use the **Min Price / Max Price** inputs to narrow the price range.
+- Use the **Sort** dropdown (Price ↑, Price ↓, Rating) to reorder — all filtering is instant and happens client-side.
+
+### Step 4 — View Product Details
+- Click any product card to open the **Product Detail** page.
+- You'll see:
+  - The product image, title, current price, source platform, and rating.
+  - An **interactive price history chart** (area chart) showing how the price has changed over time.
+  - A **Price Intelligence Gauge** — color-coded bar comparing current price to historical min/avg/max with an AVG marker.
+  - A **Smart Buying Guide** scoring each month for the best time to buy.
+
+### Step 5 — Fetch Real-Time Customer Ratings
+- On the Product Detail page, click **Fetch Real-Time Ratings**.
+- The app scrapes the actual product page (Amazon/Flipkart/etc.) and shows an animated **1★ – 5★ rating distribution** breakdown.
+
+### Step 6 — Use the AI Chatbot (Search Mode)
+- Click the **chat bubble button** (bottom-right corner of any page).
+- Make sure you are on the **Search Mode** tab (blue, default).
+- Ask anything, e.g.: *"Show me the best wireless earbuds under ₹2000"*.
+- The bot will retrieve products from the database (or scrape live if needed) and give a formatted recommendation.
+- Products appear as **inline clickable cards** below the response — you can sort them by price or rating.
+
+### Step 7 — Use the AI Chatbot (Compare Mode — NEW ✨)
+- Inside the chat widget, click the **Compare Mode** tab (green).
+- Type a comparison like: *"Compare OnePlus 12 vs iQOO 12"* or *"Samsung 65" QLED vs LG OLED"*.
+- The AI uses **Google Search grounding** to fetch live specs and prices and returns:
+  1. A structured **Comparison table** (specs, features, price, value).
+  2. **Follow-up questions** to understand your specific needs (budget, use-case).
+  3. A **clear buy/skip recommendation** in Indian Rupees (₹).
+- You can continue the conversation — the bot remembers previous messages in the same session.
+- Use the **New Chat** button to reset the conversation.
+- Use the **Expand** button to open the chat in a wide-screen view for easier reading of comparison tables.
+
+### Step 8 — Add to Wishlist & Set Price Alerts
+- On the Product Detail page, click the **heart icon** (❤️).
+- Enter your **target price** (the price you want to be notified at).
+- Click **Set Alert**.
+- The backend will periodically check the latest scraped price for that product.
+- When the price drops to your target or below, a **notification** is created.
+- Check your alerts on the **Wishlist** page (link in navbar).
+
+### Step 9 — Browse Live Offers
+- The **OfferFeed carousel** on the Home page auto-refreshes every 10 minutes with the latest deals from all 6 platforms.
+- Click any offer card to go directly to the deal page.
+
+### Step 10 — Toggle Dark / Light Mode
+- Click the **moon/sun icon** in the navbar to switch between dark and light themes.
+- Your preference is saved in `localStorage` and persists across sessions.
 
 ---
 
@@ -302,6 +396,7 @@ Open **http://localhost:5173** in your browser.
 # chatbot page and you can adjust the price range and rating according to your need by using up and down arrow keys
 ![alt text](image-5.png)
 ![alt text](image-6.png)
+![alt text](image-1.png)
 # product detail page
 ![alt text](screencapture-localhost-5173-product-1449-2026-03-18-19_31_59.png)
 # Blog details page

@@ -2,13 +2,14 @@ import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { getApiUrl } from '../api';
-import { Mail, Lock, Sparkles } from 'lucide-react';
+import { Mail, Lock, Sparkles, Eye, EyeOff } from 'lucide-react';
 
 export default function Login() {
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [error, setError] = useState('');
     const [loading, setLoading] = useState(false);
+    const [showPassword, setShowPassword] = useState(false);
     const { login } = useAuth();
     const navigate = useNavigate();
 
@@ -78,14 +79,37 @@ export default function Login() {
                     <div style={{ position: 'relative', marginBottom: '1rem' }}>
                         <Lock size={16} style={{ position: 'absolute', left: '1rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)', pointerEvents: 'none' }} />
                         <input
-                            type="password"
+                            type={showPassword ? 'text' : 'password'}
                             placeholder="Password"
                             value={password}
                             onChange={(e) => setPassword(e.target.value)}
                             className="auth-input"
-                            style={{ paddingLeft: '2.75rem', marginBottom: 0 }}
+                            style={{ paddingLeft: '2.75rem', paddingRight: '3rem', marginBottom: 0 }}
                             required
                         />
+                        <button
+                            type="button"
+                            onClick={() => setShowPassword(prev => !prev)}
+                            style={{
+                                position: 'absolute',
+                                right: '1rem',
+                                top: '50%',
+                                transform: 'translateY(-50%)',
+                                background: 'none',
+                                border: 'none',
+                                cursor: 'pointer',
+                                color: 'var(--text-muted)',
+                                padding: 0,
+                                display: 'flex',
+                                alignItems: 'center',
+                                transition: 'color 0.2s',
+                            }}
+                            onMouseEnter={e => e.currentTarget.style.color = 'var(--primary)'}
+                            onMouseLeave={e => e.currentTarget.style.color = 'var(--text-muted)'}
+                            aria-label={showPassword ? 'Hide password' : 'Show password'}
+                        >
+                            {showPassword ? <EyeOff size={17} /> : <Eye size={17} />}
+                        </button>
                     </div>
                     <button type="submit" disabled={loading} className="auth-btn">
                         {loading ? 'Signing in...' : 'Sign In'}

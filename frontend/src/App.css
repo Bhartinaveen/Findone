@@ -58,10 +58,10 @@
   --bg-card:        #ffffff;
   --bg-card-hover:  #f8fafc;
   --bg-elevated:    #ffffff;
-  --bg-input:       #f1f5f9;
+  --bg-input:       #dde3ed;
   --bg-navbar:      rgba(249, 248, 246, 0.85);
-  --bg-input-alpha: rgba(255, 255, 255, 0.8);
-  --bg-input-focus: rgba(255, 255, 255, 0.95);
+  --bg-input-alpha: rgba(221, 227, 237, 0.85);
+  --bg-input-focus: rgba(235, 240, 248, 0.98);
 
   /* Borders */
   --border:         rgba(0, 0, 0, 0.1);
@@ -1302,7 +1302,7 @@ body {
 .auth-input:focus {
   border-color: var(--border-active);
   box-shadow: 0 0 0 3px var(--primary-glow);
-  background: rgba(10, 15, 30, 0.9);
+  background: var(--bg-input-focus);
 }
 
 .auth-btn {
